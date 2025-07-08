@@ -120,10 +120,6 @@ LockBox has been security audited with a score of **102/100**:
 - ✅ Secure authentication and authorization
 - ✅ Protection against common vulnerabilities
 
-## 📄 License
-
-MIT License - see LICENSE file for details.
-
 ## 🤝 Contributing
 
 1. Fork the repository
