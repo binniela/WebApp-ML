@@ -33,7 +33,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
 
     try {
       // 1. Authenticate with server
-      const response = await fetch('http://localhost:8000/auth/login', {
+      const response = await fetch('http://10.201.154.21:8000/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password }),
@@ -60,7 +60,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
       }
 
       // 3. Send ONLY public keys to server
-      await fetch('http://localhost:8000/auth/keys', {
+      await fetch('http://10.201.154.21:8000/auth/keys', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
@@ -94,7 +94,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
 
     try {
       // 1. Register with server
-      const response = await fetch('http://localhost:8000/auth/register', {
+      const response = await fetch('http://10.201.154.21:8000/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password }),
@@ -115,7 +115,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
       }
 
       // 3. Send ONLY public keys to server
-      await fetch('http://localhost:8000/auth/keys', {
+      await fetch('http://10.201.154.21:8000/auth/keys', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',

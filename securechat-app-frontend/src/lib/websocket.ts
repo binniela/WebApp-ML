@@ -25,7 +25,7 @@ export class WebSocketManager {
     if (!this.userId || !this.token) return;
 
     try {
-      const wsUrl = `ws://localhost:8000/ws/${this.userId}?token=${this.token}`;
+      const wsUrl = `ws://10.201.154.21:8000/ws/${this.userId}?token=${this.token}`;
       this.ws = new WebSocket(wsUrl);
 
       this.ws.onopen = () => {
