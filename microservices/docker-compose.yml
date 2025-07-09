@@ -1,0 +1,52 @@
+version: '3.8'
+
+services:
+  auth-service:
+    build: ./auth-service
+    ports:
+      - "8001:8001"
+    environment:
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_KEY=${SUPABASE_KEY}
+      - JWT_SECRET_KEY=${JWT_SECRET_KEY}
+    volumes:
+      - ../securechat-app-backend:/shared
+    networks:
+      - lockbox-network
+
+  message-service:
+    build: ./message-service
+    ports:
+      - "8002:8002"
+    environment:
+      - SUPABASE_URL=${SUPABASE_URL}
+      - SUPABASE_KEY=${SUPABASE_KEY}
+    volumes:
+      - ../securechat-app-backend:/shared
+    depends_on:
+      - auth-service
+      - websocket-service
+    networks:
+      - lockbox-network
+
+  websocket-service:
+    build: ./websocket-service
+    ports:
+      - "8003:8003"
+    networks:
+      - lockbox-network
+
+  api-gateway:
+    build: ./api-gateway
+    ports:
+      - "8000:80"
+    depends_on:
+      - auth-service
+      - message-service
+      - websocket-service
+    networks:
+      - lockbox-network
+
+networks:
+  lockbox-network:
+    driver: bridge
