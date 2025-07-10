@@ -1,15 +1,11 @@
 #!/bin/bash
 
-echo "🚀 Setting up LockBox Microservices on EC2..."
+echo "🔄 Updating LockBox services with latest code..."
 
-# Create production environment file
-cat > .env << 'EOF'
-SUPABASE_URL=https://djlxdsozofvmonouzzkw.supabase.co
-SUPABASE_KEY=eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImRqbHhkc296b2Z2bW9ub3V6emt3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTEzODI4MDMsImV4cCI6MjA2Njk1ODgwM30.lksP_TWlVYsyAFLvd6nUjtk304xNIq_cjMfzx0la7E8
-JWT_SECRET_KEY=lockbox-super-secure-jwt-secret-key-2024-quantum-safe-messaging-app-production-ready
-EOF
+# Pull latest code
+git pull origin main
 
-# Create systemd service files for auto-restart
+# Update virtual environment path in systemd services
 sudo tee /etc/systemd/system/lockbox-auth.service > /dev/null << 'EOF'
 [Unit]
 Description=LockBox Auth Service
@@ -19,9 +15,9 @@ After=network.target
 Type=simple
 User=ubuntu
 WorkingDirectory=/home/ubuntu/WebApp-ML/microservices/auth-service
-Environment=PATH=/home/ubuntu/.local/bin:/usr/bin:/bin
+Environment=PATH=/home/ubuntu/WebApp-ML/microservices/venv/bin:/usr/bin:/bin
 EnvironmentFile=/home/ubuntu/WebApp-ML/microservices/.env
-ExecStart=/usr/bin/python3 main.py
+ExecStart=/home/ubuntu/WebApp-ML/microservices/venv/bin/python main.py
 Restart=always
 RestartSec=3
 
@@ -38,9 +34,9 @@ After=network.target lockbox-auth.service
 Type=simple
 User=ubuntu
 WorkingDirectory=/home/ubuntu/WebApp-ML/microservices/message-service
-Environment=PATH=/home/ubuntu/.local/bin:/usr/bin:/bin
+Environment=PATH=/home/ubuntu/WebApp-ML/microservices/venv/bin:/usr/bin:/bin
 EnvironmentFile=/home/ubuntu/WebApp-ML/microservices/.env
-ExecStart=/usr/bin/python3 main.py
+ExecStart=/home/ubuntu/WebApp-ML/microservices/venv/bin/python main.py
 Restart=always
 RestartSec=3
 
@@ -57,9 +53,9 @@ After=network.target
 Type=simple
 User=ubuntu
 WorkingDirectory=/home/ubuntu/WebApp-ML/microservices/websocket-service
-Environment=PATH=/home/ubuntu/.local/bin:/usr/bin:/bin
+Environment=PATH=/home/ubuntu/WebApp-ML/microservices/venv/bin:/usr/bin:/bin
 EnvironmentFile=/home/ubuntu/WebApp-ML/microservices/.env
-ExecStart=/usr/bin/python3 main.py
+ExecStart=/home/ubuntu/WebApp-ML/microservices/venv/bin/python main.py
 Restart=always
 RestartSec=3
 
@@ -67,7 +63,7 @@ RestartSec=3
 WantedBy=multi-user.target
 EOF
 
-# Create NGINX configuration for production
+# Update NGINX configuration with proper CORS
 sudo tee /etc/nginx/sites-available/lockbox > /dev/null << 'EOF'
 server {
     listen 80;
@@ -154,12 +150,11 @@ server {
 }
 EOF
 
-# Enable the site
-sudo ln -sf /etc/nginx/sites-available/lockbox /etc/nginx/sites-enabled/
-sudo rm -f /etc/nginx/sites-enabled/default
+# Reload systemd and restart services
+sudo systemctl daemon-reload
+sudo systemctl restart lockbox-auth lockbox-message lockbox-websocket
+sudo nginx -t && sudo systemctl reload nginx
 
-# Test NGINX configuration
-sudo nginx -t
-
-echo "✅ EC2 setup complete!"
-echo "🚀 Next: Run start-production.sh to start all services"
+echo "✅ Services updated and restarted!"
+echo "🔍 Service status:"
+sudo systemctl status lockbox-auth lockbox-message lockbox-websocket --no-pager

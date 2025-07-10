@@ -16,7 +16,12 @@ app = FastAPI(title="LockBox Auth Service", version="1.0.0")
 # CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],
+    allow_origins=[
+        "https://web-app-ml.vercel.app",
+        "http://localhost:3000",
+        "http://52.53.221.141",
+        "*"
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
