@@ -5,10 +5,9 @@ import os
 import requests
 import uuid
 
-# Add parent directory to path to import shared modules
-sys.path.append(os.path.join(os.path.dirname(__file__), '../../securechat-app-backend'))
-
-from app.database import db
+# Import shared utilities
+sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+from shared_utils import db, verify_token
 
 app = FastAPI(title="LockBox Message Service", version="1.0.0")
 
@@ -21,8 +20,8 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-AUTH_SERVICE_URL = "http://auth-service:8001"
-WEBSOCKET_SERVICE_URL = "http://websocket-service:8003"
+AUTH_SERVICE_URL = "http://localhost:8001"
+WEBSOCKET_SERVICE_URL = "http://localhost:8003"
 
 async def get_current_user(authorization: str = Header(None)):
     """Get current user by calling auth service"""
@@ -40,7 +39,6 @@ async def get_current_user(authorization: str = Header(None)):
         return response.json()
     except requests.RequestException:
         # Fallback to local verification if auth service is down
-        from app.utils.auth import verify_token
         username = verify_token(token)
         if not username:
             raise HTTPException(status_code=401, detail="Invalid token")
@@ -170,6 +168,22 @@ async def get_conversation(contact_id: str, current_user = Depends(get_current_u
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/chat-requests/incoming")
+async def get_incoming_chat_requests(current_user = Depends(get_current_user)):
+    """Get incoming chat requests"""
+    # Return empty for now - implement as needed
+    return []
+
+@app.post("/chat-requests/send")
+async def send_chat_request(request_data: dict, current_user = Depends(get_current_user)):
+    """Send chat request"""
+    return {"message": "Chat request sent"}
+
+@app.post("/chat-requests/respond")
+async def respond_to_chat_request(response_data: dict, current_user = Depends(get_current_user)):
+    """Respond to chat request"""
+    return {"message": "Response sent"}
 
 if __name__ == "__main__":
     import uvicorn

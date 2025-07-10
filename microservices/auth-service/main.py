@@ -2,12 +2,12 @@ from fastapi import FastAPI, HTTPException, Depends, Header
 from fastapi.middleware.cors import CORSMiddleware
 import sys
 import os
+from datetime import timedelta
+import uuid
 
-# Add parent directory to path to import shared modules
-sys.path.append(os.path.join(os.path.dirname(__file__), '../../securechat-app-backend'))
-
-from app.utils.auth import hash_password, verify_password, create_access_token, verify_token, ACCESS_TOKEN_EXPIRE_MINUTES
-from app.database import db
+# Import shared utilities
+sys.path.append(os.path.dirname(os.path.dirname(__file__)))
+from shared_utils import db, hash_password, verify_password, create_access_token, verify_token, ACCESS_TOKEN_EXPIRE_MINUTES
 from datetime import timedelta
 import uuid
 
@@ -173,6 +173,51 @@ async def get_user_keys(user_id: str):
         raise
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
+
+# Additional routes that were in the original backend
+@app.get("/contacts/")
+async def get_contacts(authorization: str = Header(None)):
+    """Get user contacts"""
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Missing token")
+    
+    token = authorization.split(" ")[1]
+    username = verify_token(token)
+    if not username:
+        raise HTTPException(status_code=401, detail="Invalid token")
+    
+    # Return empty contacts for now - implement as needed
+    return []
+
+@app.get("/contacts/pending")
+async def get_pending_contacts(authorization: str = Header(None)):
+    """Get pending contacts"""
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Missing token")
+    
+    return []
+
+@app.get("/users/search")
+async def search_users(q: str, authorization: str = Header(None)):
+    """Search users"""
+    if not authorization or not authorization.startswith("Bearer "):
+        raise HTTPException(status_code=401, detail="Missing token")
+    
+    if not q:
+        return []
+    
+    # Search users by username
+    all_users = db.fetchall("users", {})
+    matching_users = []
+    
+    for user in all_users:
+        if q.lower() in user['username'].lower():
+            matching_users.append({
+                "id": user['id'],
+                "username": user['username']
+            })
+    
+    return matching_users[:10]  # Limit to 10 results
 
 if __name__ == "__main__":
     import uvicorn
