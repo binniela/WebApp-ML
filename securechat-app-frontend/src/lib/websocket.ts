@@ -25,7 +25,7 @@ export class WebSocketManager {
     if (!this.userId || !this.token) return;
 
     try {
-      const wsUrl = `ws://ec2-3-101-119-224.us-west-1.compute.amazonaws.com/ws/${this.userId}?token=${this.token}`;
+      const wsUrl = `ws://52.53.221.141/ws/${this.userId}?token=${this.token}`;
       this.ws = new WebSocket(wsUrl);
 
       this.ws.onopen = () => {
