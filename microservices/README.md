@@ -1,145 +1,162 @@
-# 🐳 LockBox Microservices Architecture
+# 🏗️ LockBox Microservices Architecture
 
-## 🏗️ Architecture Overview
+## 🎯 Architecture Overview
 
 ```
-Frontend (React) → API Gateway (NGINX) → Microservices → Database (Supabase)
-                                      ├── Auth Service (8001)
-                                      ├── Message Service (8002)
-                                      └── WebSocket Service (8003)
+Frontend (Vercel) → NGINX API Gateway → Microservices → Database (Supabase)
+                         (Port 8000)    ├── Auth Service (8001)
+                                        ├── Message Service (8002)
+                                        └── WebSocket Service (8003)
 ```
 
-## 🚀 Services
-
-### **Auth Service (Port 8001)**
-- User registration and login
-- JWT token generation and verification
-- Public key storage
-- User management
-
-### **Message Service (Port 8002)**
-- Encrypted message storage
-- Message retrieval
-- Conversation management
-- Calls WebSocket service for real-time delivery
-
-### **WebSocket Service (Port 8003)**
-- Real-time WebSocket connections
-- Message broadcasting
-- Connection management
-- Ping/pong health checks
-
-### **API Gateway (Port 8000)**
-- NGINX reverse proxy
-- Route requests to appropriate services
-- CORS handling
-- Load balancing
-
-## 🐳 Docker Setup
+## 🚀 Quick Start
 
 ### **Prerequisites:**
-```bash
-# Install Docker Desktop
-# https://www.docker.com/products/docker-desktop/
+- Python 3.8+
+- NGINX installed (`brew install nginx` on macOS)
+- All dependencies: `pip3 install fastapi uvicorn supabase bcrypt python-jose python-multipart python-dotenv websockets requests`
 
-# Verify installation
-docker --version
-docker-compose --version
+### **Start All Services:**
+```bash
+cd microservices
+./start-services.sh
 ```
 
-### **Quick Start:**
+### **Stop All Services:**
 ```bash
-cd microservices/
-
-# Build and start all services
-docker-compose up --build
-
-# Or run in background
-docker-compose up -d --build
-
-# View logs
-docker-compose logs -f
-
-# Stop services
-docker-compose down
+./stop-services.sh
 ```
 
-### **Individual Service Testing:**
+## 🔧 Services
+
+### **🔐 Auth Service (Port 8001)**
+- **Purpose:** User authentication, JWT tokens, user management
+- **Endpoints:**
+  - `POST /register` - User registration
+  - `POST /login` - User login
+  - `GET /verify/{token}` - Token verification
+  - `GET /contacts/` - Get user contacts
+  - `GET /users/search` - Search users
+  - `POST /keys` - Store user keys
+
+### **💬 Message Service (Port 8002)**
+- **Purpose:** Message storage, encryption, chat requests
+- **Endpoints:**
+  - `POST /send` - Send encrypted message
+  - `GET /` - Get user messages
+  - `GET /conversation/{contact_id}` - Get conversation
+  - `GET /chat-requests/incoming` - Get chat requests
+  - `POST /chat-requests/send` - Send chat request
+
+### **🔌 WebSocket Service (Port 8003)**
+- **Purpose:** Real-time messaging, connection management
+- **Endpoints:**
+  - `WS /ws/{user_id}` - WebSocket connection
+  - `POST /broadcast` - Broadcast message
+  - `GET /connections` - Active connections
+
+### **🌐 NGINX API Gateway (Port 8000)**
+- **Purpose:** Load balancing, routing, CORS handling
+- **Routes:**
+  - `/auth/*` → Auth Service
+  - `/messages/*` → Message Service
+  - `/ws/*` → WebSocket Service
+  - `/contacts/*` → Auth Service
+  - `/chat-requests/*` → Message Service
+  - `/users/*` → Auth Service
+
+## 📊 Service Communication
+
+```mermaid
+graph TD
+    A[Frontend] --> B[NGINX Gateway :8000]
+    B --> C[Auth Service :8001]
+    B --> D[Message Service :8002]
+    B --> E[WebSocket Service :8003]
+    D --> C
+    D --> E
+    C --> F[Supabase Database]
+    D --> F
+```
+
+## 🔍 Monitoring & Logs
+
+### **Check Service Status:**
 ```bash
-# Test auth service
-curl http://localhost:8001/health
+# Check if services are running
+lsof -i :8000  # NGINX
+lsof -i :8001  # Auth
+lsof -i :8002  # Message
+lsof -i :8003  # WebSocket
+```
 
-# Test message service  
-curl http://localhost:8002/health
+### **View Logs:**
+```bash
+tail -f logs/auth.log      # Auth service logs
+tail -f logs/message.log   # Message service logs
+tail -f logs/websocket.log # WebSocket service logs
+```
 
-# Test websocket service
-curl http://localhost:8003/connections
-
-# Test API gateway
+### **Test Endpoints:**
+```bash
+# Health check
 curl http://localhost:8000/health
+
+# Test auth service
+curl -X POST http://localhost:8000/auth/register \
+  -H "Content-Type: application/json" \
+  -d '{"username":"test","password":"test123"}'
 ```
 
-## 🔧 Development
+## 🛠️ Development
 
-### **Service URLs:**
-- **API Gateway:** http://localhost:8000
-- **Auth Service:** http://localhost:8001
-- **Message Service:** http://localhost:8002
-- **WebSocket Service:** http://localhost:8003
+### **Add New Service:**
+1. Create new directory: `mkdir new-service`
+2. Create `main.py` with FastAPI app
+3. Add to `start-services.sh`
+4. Update `nginx.conf` with routing
+5. Add shared utilities import
 
-### **Frontend Configuration:**
-Update your frontend to use the API Gateway:
-```typescript
-// Change from:
-const API_URL = "http://localhost:8000"
+### **Modify Existing Service:**
+1. Edit service files directly
+2. Restart services: `./stop-services.sh && ./start-services.sh`
+3. Check logs for errors
 
-// To:
-const API_URL = "http://localhost:8000"  // API Gateway handles routing
-```
-
-### **Service Communication:**
-Services communicate internally using Docker network:
-- `auth-service:8001`
-- `message-service:8002`
-- `websocket-service:8003`
-
-## 📊 Benefits Achieved
+## 🏆 Benefits Achieved
 
 ### **Scalability:**
-- Scale each service independently
-- Add more instances of busy services
-- Horizontal scaling ready
+- ✅ Scale each service independently
+- ✅ Add more instances of busy services
+- ✅ Horizontal scaling ready
 
 ### **Reliability:**
-- Service isolation - one crash doesn't affect others
-- Graceful degradation
-- Health checks and monitoring
+- ✅ Service isolation - one crash doesn't affect others
+- ✅ Graceful degradation
+- ✅ Health checks and monitoring
 
 ### **Development:**
-- Team can work on different services
-- Independent deployments
-- Technology flexibility per service
+- ✅ Team can work on different services
+- ✅ Independent deployments
+- ✅ Technology flexibility per service
 
 ### **Production Ready:**
-- Container orchestration
-- Load balancing
-- Service discovery
-- Environment configuration
+- ✅ Load balancing with NGINX
+- ✅ Service discovery
+- ✅ Environment configuration
+- ✅ Logging and monitoring
 
-## 🎯 Next Steps
+## 🎯 Resume Impact
 
-1. **Install Docker Desktop**
-2. **Run `docker-compose up --build`**
-3. **Test with frontend**
-4. **Deploy to cloud (AWS ECS, Kubernetes)**
+**"Architected and implemented distributed microservices architecture using NGINX API Gateway, decomposing monolithic application into specialized services with service-to-service communication, load balancing, and independent scaling capabilities - demonstrating enterprise-level system design and DevOps practices"**
 
-## 🏆 Skills Demonstrated
+## 🚀 Next Steps
 
-- ✅ **Microservices Architecture**
-- ✅ **Docker Containerization**
-- ✅ **Service-to-Service Communication**
-- ✅ **API Gateway Pattern**
-- ✅ **Container Orchestration**
-- ✅ **Distributed Systems**
+1. **Deploy to Cloud:** Use Docker containers on AWS ECS
+2. **Add Monitoring:** Implement Prometheus/Grafana
+3. **Service Discovery:** Add Consul or etcd
+4. **Circuit Breakers:** Add resilience patterns
+5. **API Versioning:** Implement versioned endpoints
 
-**Perfect for Verkada interview - shows enterprise-level system design!** 🚀
+---
+
+**Built with enterprise-grade microservices architecture!** 🏗️✨
