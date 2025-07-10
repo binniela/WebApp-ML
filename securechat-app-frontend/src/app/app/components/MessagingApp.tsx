@@ -147,12 +147,12 @@ export default function MessagingApp({ user, onLogout }: MessagingAppProps) {
       const token = localStorage.getItem('lockbox-token')
       
       // Load active contacts
-      const contactsResponse = await fetch('http://10.201.154.21:8000/contacts/', {
+      const contactsResponse = await fetch('http://10.201.154.21:8001/contacts/', {
         headers: { 'Authorization': `Bearer ${token}` }
       })
       
       // Load pending contacts
-      const pendingResponse = await fetch('http://10.201.154.21:8000/contacts/pending', {
+      const pendingResponse = await fetch('http://10.201.154.21:8001/contacts/pending', {
         headers: { 'Authorization': `Bearer ${token}` }
       })
       
@@ -194,7 +194,7 @@ export default function MessagingApp({ user, onLogout }: MessagingAppProps) {
   const loadMessages = async () => {
     try {
       const token = localStorage.getItem('lockbox-token')
-      const response = await fetch('http://10.201.154.21:8000/messages/', {
+      const response = await fetch('http://10.201.154.21:8001/messages/', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -276,7 +276,7 @@ export default function MessagingApp({ user, onLogout }: MessagingAppProps) {
         return
       }
       
-      const response = await fetch('http://10.201.154.21:8000/chat-requests/incoming', {
+      const response = await fetch('http://10.201.154.21:8001/chat-requests/incoming', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
@@ -449,13 +449,13 @@ export default function MessagingApp({ user, onLogout }: MessagingAppProps) {
       const signature = `signature_${messageId}`
       
       // TODO: Re-enable full post-quantum encryption once keys are properly stored
-      // const recipientResponse = await fetch(`http://10.201.154.21:8000/auth/keys/${activeContact.id}`, {
+      // const recipientResponse = await fetch(`http://10.201.154.21:8001/auth/keys/${activeContact.id}`, {
       //   headers: { 'Authorization': `Bearer ${token}` }
       // })
       // const recipientKeys = await recipientResponse.json()
       // const { encryptedBlob, signature } = crypto.encryptMessage(content, recipientKeys.kyber_public_key)
       
-      const response = await fetch('http://10.201.154.21:8000/messages/send', {
+      const response = await fetch('http://10.201.154.21:8001/messages/send', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -539,7 +539,7 @@ export default function MessagingApp({ user, onLogout }: MessagingAppProps) {
         return
       }
       
-      const response = await fetch(`http://10.201.154.21:8000/messages/conversation/${contactId}`, {
+      const response = await fetch(`http://10.201.154.21:8001/messages/conversation/${contactId}`, {
         headers: {
           'Authorization': `Bearer ${token}`
         }

@@ -31,7 +31,7 @@ export default function ChatRequestModal({
   const handleAccept = async (request: ChatRequest) => {
     try {
       const token = localStorage.getItem('lockbox-token')
-      const response = await fetch('http://10.201.154.21:8000/chat-requests/respond', {
+      const response = await fetch('http://10.201.154.21:8001/chat-requests/respond', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -57,7 +57,7 @@ export default function ChatRequestModal({
   const handleDecline = async (request: ChatRequest) => {
     try {
       const token = localStorage.getItem('lockbox-token')
-      const response = await fetch('http://10.201.154.21:8000/chat-requests/respond', {
+      const response = await fetch('http://10.201.154.21:8001/chat-requests/respond', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
