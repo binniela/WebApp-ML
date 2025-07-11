@@ -46,7 +46,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
       });
       
       // Original direct call (commented out due to Mixed Content Policy)
-      // const response = await fetch('http://52.53.221.141/auth/login', {
+      // const response = await fetch('/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password }),
@@ -73,7 +73,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
       }
 
       // 3. Send ONLY public keys to server
-      await fetch('http://52.53.221.141/auth/keys', {
+      await fetch('/auth/keys', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
@@ -120,7 +120,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
       });
       
       // Original direct call (commented out due to Mixed Content Policy)
-      // const response = await fetch('http://52.53.221.141/auth/register', {
+      // const response = await fetch('/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password }),
@@ -141,7 +141,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
       }
 
       // 3. Send ONLY public keys to server
-      await fetch('http://52.53.221.141/auth/keys', {
+      await fetch('/auth/keys', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',

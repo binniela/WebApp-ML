@@ -14,18 +14,22 @@ export default async function handler(req, res) {
     const { path, ...body } = req.body;
     const targetUrl = `http://52.53.221.141${path}`;
     
+    console.log('Proxying to:', targetUrl, 'with body:', body);
+    
     const response = await fetch(targetUrl, {
       method: req.method,
       headers: {
         'Content-Type': 'application/json',
+        ...(req.headers.authorization && { 'Authorization': req.headers.authorization })
       },
       body: req.method !== 'GET' ? JSON.stringify(body) : undefined,
     });
 
     const data = await response.json();
+    console.log('Response:', response.status, data);
     res.status(response.status).json(data);
   } catch (error) {
     console.error('Proxy error:', error);
-    res.status(500).json({ error: 'Proxy request failed' });
+    res.status(500).json({ error: 'Proxy request failed', details: error.message });
   }
 }
