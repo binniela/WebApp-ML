@@ -9,13 +9,25 @@ export default async function handler(req, res) {
   }
 
   try {
-    const { path, ...body } = req.body;
+    let targetUrl, requestBody;
     
-    if (!path) {
-      return res.status(400).json({ error: 'Path is required' });
+    if (req.method === 'GET') {
+      // For GET requests, path comes from query params
+      const { path } = req.query;
+      if (!path) {
+        return res.status(400).json({ error: 'Path is required' });
+      }
+      targetUrl = `http://52.53.221.141${path}`;
+      requestBody = undefined;
+    } else {
+      // For POST requests, path comes from body
+      const { path, ...body } = req.body;
+      if (!path) {
+        return res.status(400).json({ error: 'Path is required' });
+      }
+      targetUrl = `http://52.53.221.141${path}`;
+      requestBody = JSON.stringify(body);
     }
-    
-    const targetUrl = `http://52.53.221.141${path}`;
     
     console.log('Proxying to:', targetUrl);
     
@@ -25,7 +37,7 @@ export default async function handler(req, res) {
         'Content-Type': 'application/json',
         ...(req.headers.authorization && { 'Authorization': req.headers.authorization })
       },
-      body: req.method !== 'GET' ? JSON.stringify(body) : undefined,
+      body: requestBody,
     });
 
     const text = await response.text();
