@@ -33,7 +33,20 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
 
     try {
       // 1. Authenticate with server
-      const response = await fetch('http://52.53.221.141/auth/login', {
+      const response = await fetch('/api/proxy', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          path: '/auth/login',
+          username,
+          password
+        })
+      });
+      
+      // Original direct call (commented out due to Mixed Content Policy)
+      // const response = await fetch('http://52.53.221.141/auth/login', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password }),
@@ -94,7 +107,20 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
 
     try {
       // 1. Register with server
-      const response = await fetch('http://52.53.221.141/auth/register', {
+      const response = await fetch('/api/proxy', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          path: '/auth/register',
+          username,
+          password
+        })
+      });
+      
+      // Original direct call (commented out due to Mixed Content Policy)
+      // const response = await fetch('http://52.53.221.141/auth/register', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ username, password }),
