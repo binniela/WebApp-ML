@@ -33,23 +33,12 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
 
     try {
       // 1. Authenticate with server
-      const response = await fetch('http://52.53.221.141', {
+      const response = await fetch('http://52.53.221.141/auth/login', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          path: '/auth/login',
-          username,
-          password
-        })
-      });
-      
-      // Original direct call (commented out due to Mixed Content Policy)
-      // const response = await fetch('/auth/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password }),
+        body: JSON.stringify({ username, password })
       })
 
       const data = await response.json()
@@ -73,7 +62,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
       }
 
       // 3. Send ONLY public keys to server
-      await fetch('/auth/keys', {
+      await fetch('http://52.53.221.141/auth/keys', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
@@ -107,23 +96,12 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
 
     try {
       // 1. Register with server
-      const response = await fetch('http://52.53.221.141', {
+      const response = await fetch('http://52.53.221.141/auth/register', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({
-          path: '/auth/register',
-          username,
-          password
-        })
-      });
-      
-      // Original direct call (commented out due to Mixed Content Policy)
-      // const response = await fetch('/auth/register', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ username, password }),
+        body: JSON.stringify({ username, password })
       })
 
       const data = await response.json()
@@ -141,7 +119,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
       }
 
       // 3. Send ONLY public keys to server
-      await fetch('/auth/keys', {
+      await fetch('http://52.53.221.141/auth/keys', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
