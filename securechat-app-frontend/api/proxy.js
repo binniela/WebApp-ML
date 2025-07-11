@@ -27,8 +27,8 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'Path is required' });
       }
       
-      // Handle search requests specially
-      if (path.includes('/users/search')) {
+      // Handle GET requests specially
+      if (path.includes('/users/search') || path.includes('/chat-requests/incoming') || path.includes('/contacts/')) {
         targetUrl = `http://52.53.221.141${path}`;
         requestBody = undefined;
         actualMethod = 'GET';
