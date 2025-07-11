@@ -204,10 +204,13 @@ export default function MessagingApp({ user, onLogout }: MessagingAppProps) {
   const loadMessages = async () => {
     try {
       const token = localStorage.getItem('lockbox-token')
-      const response = await fetch('/messages/', {
+      const response = await fetch('/api/proxy', {
+        method: 'POST',
         headers: {
+          'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
-        }
+        },
+        body: JSON.stringify({ path: '/' })
       })
 
       if (response.ok) {
@@ -470,13 +473,14 @@ export default function MessagingApp({ user, onLogout }: MessagingAppProps) {
       // const recipientKeys = await recipientResponse.json()
       // const { encryptedBlob, signature } = crypto.encryptMessage(content, recipientKeys.kyber_public_key)
       
-      const response = await fetch('/messages/send', {
+      const response = await fetch('/api/proxy', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
+          path: '/send',
           recipient_id: activeContact.id,
           encrypted_blob: encryptedBlob,
           signature: signature,
@@ -554,10 +558,13 @@ export default function MessagingApp({ user, onLogout }: MessagingAppProps) {
         return
       }
       
-      const response = await fetch(`/messages/conversation/${contactId}`, {
+      const response = await fetch('/api/proxy', {
+        method: 'POST',
         headers: {
+          'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
-        }
+        },
+        body: JSON.stringify({ path: `/conversation/${contactId}` })
       })
       
       if (response.status === 401) {
