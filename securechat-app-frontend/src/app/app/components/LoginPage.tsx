@@ -33,7 +33,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
 
     try {
       // 1. Authenticate with server
-      const response = await fetch('/api/proxy', {
+      const response = await fetch('http://52.53.221.141', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -107,7 +107,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
 
     try {
       // 1. Register with server
-      const response = await fetch('/api/proxy', {
+      const response = await fetch('http://52.53.221.141', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

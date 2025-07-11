@@ -38,7 +38,7 @@ export default function NewChatModal({ onClose, onStartChat, darkMode }: NewChat
       setIsLoading(true)
       try {
         const token = localStorage.getItem('lockbox-token')
-        const response = await fetch(`/api/proxy/users/search?q=${encodeURIComponent(searchQuery)}`, {
+        const response = await fetch(`http://52.53.221.141/users/search?q=${encodeURIComponent(searchQuery)}`, {
           headers: {
             'Authorization': `Bearer ${token}`
           }
@@ -68,7 +68,7 @@ export default function NewChatModal({ onClose, onStartChat, darkMode }: NewChat
 
     try {
       const token = localStorage.getItem('lockbox-token')
-      const response = await fetch('/api/proxy/chat-requests/send', {
+      const response = await fetch('http://52.53.221.141/chat-requests/send', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

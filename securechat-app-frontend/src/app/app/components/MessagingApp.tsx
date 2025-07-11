@@ -147,12 +147,12 @@ export default function MessagingApp({ user, onLogout }: MessagingAppProps) {
       const token = localStorage.getItem('lockbox-token')
       
       // Load active contacts
-      const contactsResponse = await fetch('/api/proxy/contacts/', {
+      const contactsResponse = await fetch('http://52.53.221.141/contacts/', {
         headers: { 'Authorization': `Bearer ${token}` }
       })
       
       // Load pending contacts
-      const pendingResponse = await fetch('/api/proxy/contacts/pending', {
+      const pendingResponse = await fetch('http://52.53.221.141/contacts/pending', {
         headers: { 'Authorization': `Bearer ${token}` }
       })
       
@@ -276,7 +276,7 @@ export default function MessagingApp({ user, onLogout }: MessagingAppProps) {
         return
       }
       
-      const response = await fetch('/api/proxy/chat-requests/incoming', {
+      const response = await fetch('http://52.53.221.141/chat-requests/incoming', {
         headers: {
           'Authorization': `Bearer ${token}`
         }
