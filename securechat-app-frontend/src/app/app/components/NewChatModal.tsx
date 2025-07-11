@@ -38,10 +38,15 @@ export default function NewChatModal({ onClose, onStartChat, darkMode }: NewChat
       setIsLoading(true)
       try {
         const token = localStorage.getItem('lockbox-token')
-        const response = await fetch(`http://52.53.221.141/users/search?q=${encodeURIComponent(searchQuery)}`, {
+        const response = await fetch('/api/proxy', {
+          method: 'POST',
           headers: {
+            'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`
-          }
+          },
+          body: JSON.stringify({
+            path: `/users/search?q=${encodeURIComponent(searchQuery)}`
+          })
         })
 
         if (response.ok) {
@@ -68,13 +73,14 @@ export default function NewChatModal({ onClose, onStartChat, darkMode }: NewChat
 
     try {
       const token = localStorage.getItem('lockbox-token')
-      const response = await fetch('http://52.53.221.141/chat-requests/send', {
+      const response = await fetch('/api/proxy', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
+          path: '/chat-requests/send',
           recipient_id: selectedUser.id,
           message: message
         })

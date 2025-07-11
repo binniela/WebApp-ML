@@ -26,13 +26,21 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'Path is required' });
       }
       targetUrl = `http://52.53.221.141${path}`;
-      requestBody = JSON.stringify(body);
+      
+      // If it's a search request, use GET method
+      if (path.includes('/users/search')) {
+        requestBody = undefined;
+      } else {
+        requestBody = JSON.stringify(body);
+      }
     }
     
     console.log('Proxying to:', targetUrl);
     
+    const actualMethod = (targetUrl.includes('/users/search')) ? 'GET' : req.method;
+    
     const response = await fetch(targetUrl, {
-      method: req.method,
+      method: actualMethod,
       headers: {
         'Content-Type': 'application/json',
         ...(req.headers.authorization && { 'Authorization': req.headers.authorization })
