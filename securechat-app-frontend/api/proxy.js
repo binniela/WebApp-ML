@@ -10,6 +10,11 @@ export default async function handler(req, res) {
 
   try {
     const { path, ...body } = req.body;
+    
+    if (!path) {
+      return res.status(400).json({ error: 'Path is required' });
+    }
+    
     const targetUrl = `http://52.53.221.141${path}`;
     
     console.log('Proxying to:', targetUrl);
