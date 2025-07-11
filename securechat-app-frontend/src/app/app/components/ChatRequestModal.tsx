@@ -31,13 +31,14 @@ export default function ChatRequestModal({
   const handleAccept = async (request: ChatRequest) => {
     try {
       const token = localStorage.getItem('lockbox-token')
-      const response = await fetch('http://52.53.221.141/chat-requests/respond', {
+      const response = await fetch('/api/proxy', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
+          path: '/chat-requests/respond',
           request_id: request.id,
           action: 'accept'
         })
@@ -57,13 +58,14 @@ export default function ChatRequestModal({
   const handleDecline = async (request: ChatRequest) => {
     try {
       const token = localStorage.getItem('lockbox-token')
-      const response = await fetch('http://52.53.221.141/chat-requests/respond', {
+      const response = await fetch('/api/proxy', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
+          path: '/chat-requests/respond',
           request_id: request.id,
           action: 'decline'
         })

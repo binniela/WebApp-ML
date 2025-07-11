@@ -147,13 +147,23 @@ export default function MessagingApp({ user, onLogout }: MessagingAppProps) {
       const token = localStorage.getItem('lockbox-token')
       
       // Load active contacts
-      const contactsResponse = await fetch('http://52.53.221.141/contacts/', {
-        headers: { 'Authorization': `Bearer ${token}` }
+      const contactsResponse = await fetch('/api/proxy', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ path: '/contacts/' })
       })
       
       // Load pending contacts
-      const pendingResponse = await fetch('http://52.53.221.141/contacts/pending', {
-        headers: { 'Authorization': `Bearer ${token}` }
+      const pendingResponse = await fetch('/api/proxy', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ path: '/contacts/pending' })
       })
       
       if (contactsResponse.ok && pendingResponse.ok) {
@@ -276,10 +286,15 @@ export default function MessagingApp({ user, onLogout }: MessagingAppProps) {
         return
       }
       
-      const response = await fetch('http://52.53.221.141/chat-requests/incoming', {
+      const response = await fetch('/api/proxy', {
+        method: 'POST',
         headers: {
+          'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
-        }
+        },
+        body: JSON.stringify({
+          path: '/chat-requests/incoming'
+        })
       })
       
       if (response.status === 401) {
