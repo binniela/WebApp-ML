@@ -20,20 +20,29 @@ export default function SecureChatApp() {
         const savedUser = localStorage.getItem('lockbox-user')
         
         if (token && savedUser) {
-          // Skip token verification for faster login - just check if data exists
-          // In production, you might want to verify occasionally
-          const userData = JSON.parse(savedUser)
+          // Verify token is still valid
+          const response = await fetch('/api/proxy', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': `Bearer ${token}`
+            },
+            body: JSON.stringify({ path: '/auth/verify/' + token.split('.')[1] })
+          })
           
-          // Load crypto keys from storage
-          const keys = crypto.loadKeysFromStorage()
-          if (keys) {
+          if (response.ok) {
+            const userData = JSON.parse(savedUser)
+            
+            // Generate temporary keys for session (in production, load from secure storage)
+            const keys = crypto.generateKeyPairs()
+            
             setUser({
               username: userData.username,
               publicKey: keys.kyber.publicKey
             })
             setIsAuthenticated(true)
           } else {
-            // No keys found, clear session
+            // Token expired, clear session
             localStorage.removeItem('lockbox-token')
             localStorage.removeItem('lockbox-user')
           }
@@ -43,7 +52,6 @@ export default function SecureChatApp() {
         // Clear invalid session
         localStorage.removeItem('lockbox-token')
         localStorage.removeItem('lockbox-user')
-        crypto.clearKeys()
       } finally {
         setIsLoading(false)
       }
@@ -63,7 +71,6 @@ export default function SecureChatApp() {
     // Clear all session data
     localStorage.removeItem('lockbox-token')
     localStorage.removeItem('lockbox-user')
-    crypto.clearKeys()
     setUser(null)
     setIsAuthenticated(false)
   }

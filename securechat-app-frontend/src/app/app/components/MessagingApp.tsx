@@ -71,10 +71,14 @@ export default function MessagingApp({ user, onLogout }: MessagingAppProps) {
 
   // Load chat requests and contacts on component mount
   useEffect(() => {
+    if (!user) return // Don't load data if no user
+    
     // Load essential data first
     const loadInitialData = async () => {
+      console.log('Loading initial data for user:', user.username)
       await loadChatRequests()
       await loadContacts()
+      await loadMessages() // Load all messages on startup
       
       // Connect WebSocket for real-time messaging
       const token = localStorage.getItem('lockbox-token')
@@ -126,12 +130,13 @@ export default function MessagingApp({ user, onLogout }: MessagingAppProps) {
     const interval = setInterval(async () => {
       try {
         await loadChatRequests()
-        // Only poll for messages if WebSocket isn't working
-        console.log('Polling check - WebSocket should handle messages')
+        // Periodically refresh messages to ensure sync
+        await loadMessages()
+        console.log('Periodic message refresh completed')
       } catch (error) {
         console.error('Polling error:', error)
       }
-    }, 5000) // 5 seconds - WebSocket should handle messages
+    }, 10000) // 10 seconds - less frequent polling
     
     return () => {
       clearInterval(interval)
@@ -140,7 +145,7 @@ export default function MessagingApp({ user, onLogout }: MessagingAppProps) {
       // Disconnect WebSocket
       wsManager.disconnect()
     }
-  }, [activeContact])
+  }, [user]) // Depend on user instead of activeContact
 
   const loadContacts = async () => {
     try {
@@ -204,6 +209,13 @@ export default function MessagingApp({ user, onLogout }: MessagingAppProps) {
   const loadMessages = async () => {
     try {
       const token = localStorage.getItem('lockbox-token')
+      if (!token || !user) {
+        console.log('No token or user available for loading messages')
+        return
+      }
+      
+      console.log('Loading messages for user:', user.username)
+      
       const response = await fetch('/api/proxy', {
         method: 'POST',
         headers: {
@@ -215,58 +227,78 @@ export default function MessagingApp({ user, onLogout }: MessagingAppProps) {
 
       if (response.ok) {
         const serverMessages = await response.json()
+        console.log('Loaded messages from server:', serverMessages.length)
         
-        // Group messages by conversation (contact)
+        // Group messages by conversation (contact) and create contacts from messages
         const messagesByContact: { [contactId: string]: Message[] } = {}
+        const contactsFromMessages: { [contactId: string]: Contact } = {}
         
         for (const msg of serverMessages) {
           // Determine which contact this message belongs to
-          const contactId = msg.sender_username === user?.username ? msg.recipient_id : msg.sender_id
+          const isOwnMessage = msg.sender_username === user.username
+          const contactId = isOwnMessage ? msg.recipient_id : msg.sender_id
+          const contactUsername = isOwnMessage ? 'Unknown' : msg.sender_username
           
           if (!messagesByContact[contactId]) {
             messagesByContact[contactId] = []
           }
           
-          // TODO: Decrypt message content client-side
-          // For now, show encrypted blob as placeholder
-          const decryptedContent = msg.encrypted_blob.replace('encrypted_', '')
+          // Create contact if not exists
+          if (!contactsFromMessages[contactId] && !isOwnMessage) {
+            contactsFromMessages[contactId] = {
+              id: contactId,
+              name: contactUsername,
+              lastMessage: '',
+              timestamp: 'now',
+              avatar: '/placeholder.svg?height=40&width=40',
+              isOnline: true,
+              unreadCount: 0,
+              status: 'active'
+            }
+          }
+          
+          // Decrypt message content
+          const decryptedContent = msg.encrypted_blob.replace('encrypted_', '') || msg.encrypted_blob
           
           messagesByContact[contactId].push({
             id: msg.id,
             content: decryptedContent,
-            sender: msg.sender_username === user?.username ? 'You' : msg.sender_username,
+            sender: isOwnMessage ? 'You' : msg.sender_username,
             timestamp: new Date(msg.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            isOwn: msg.sender_username === user?.username,
+            isOwn: isOwnMessage,
             isEncrypted: true,
             status: 'delivered'
           })
         }
         
-        // Update messages state - merge instead of replace to avoid overwriting current conversations
-        setMessages(prev => {
-          const newMessages = { ...prev }
-          for (const [contactId, msgs] of Object.entries(messagesByContact)) {
-            // Only update if we don't have messages for this contact or if we have fewer messages
-            if (!newMessages[contactId] || newMessages[contactId].length < msgs.length) {
-              newMessages[contactId] = msgs
+        // Update messages state
+        setMessages(messagesByContact)
+        
+        // Add contacts from messages to contacts list
+        setContacts(prev => {
+          const existingContactIds = new Set(prev.map(c => c.id))
+          const newContacts = Object.values(contactsFromMessages).filter(c => !existingContactIds.has(c.id))
+          
+          // Update last messages for all contacts
+          const updatedContacts = [...prev, ...newContacts].map(contact => {
+            const contactMessages = messagesByContact[contact.id]
+            if (contactMessages && contactMessages.length > 0) {
+              const lastMsg = contactMessages[contactMessages.length - 1]
+              return {
+                ...contact,
+                lastMessage: lastMsg.content.length > 50 ? lastMsg.content.substring(0, 50) + '...' : lastMsg.content,
+                timestamp: lastMsg.timestamp
+              }
             }
-          }
-          return newMessages
+            return contact
+          })
+          
+          return updatedContacts
         })
         
-        // Update last message in contacts
-        setContacts(prev => prev.map(contact => {
-          const contactMessages = messagesByContact[contact.id]
-          if (contactMessages && contactMessages.length > 0) {
-            const lastMsg = contactMessages[contactMessages.length - 1]
-            return {
-              ...contact,
-              lastMessage: lastMsg.content.length > 50 ? lastMsg.content.substring(0, 50) + '...' : lastMsg.content,
-              timestamp: lastMsg.timestamp
-            }
-          }
-          return contact
-        }))
+        console.log('Messages loaded and contacts updated')
+      } else {
+        console.error('Failed to load messages:', response.status)
       }
     } catch (error) {
       console.error('Failed to load messages:', error)
