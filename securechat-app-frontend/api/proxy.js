@@ -28,7 +28,7 @@ export default async function handler(req, res) {
       }
       
       // Handle GET requests specially
-      if (path.includes('/users/search') || path.includes('/chat-requests/incoming') || path.includes('/contacts/')) {
+      if (path.includes('/users/search') || path.includes('/chat-requests/incoming') || path.includes('/contacts/') || path.includes('/messages') || path.includes('/conversation/')) {
         targetUrl = `http://52.53.221.141${path}`;
         requestBody = undefined;
         actualMethod = 'GET';

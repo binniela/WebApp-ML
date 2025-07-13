@@ -20,32 +20,19 @@ export default function SecureChatApp() {
         const savedUser = localStorage.getItem('lockbox-user')
         
         if (token && savedUser) {
-          // Verify token is still valid
-          const response = await fetch('/api/proxy', {
-            method: 'POST',
-            headers: {
-              'Content-Type': 'application/json',
-              'Authorization': `Bearer ${token}`
-            },
-            body: JSON.stringify({ path: '/auth/verify/' + token.split('.')[1] })
-          })
+          // Skip token verification for faster startup - just restore session
+          const userData = JSON.parse(savedUser)
           
-          if (response.ok) {
-            const userData = JSON.parse(savedUser)
-            
-            // Generate temporary keys for session (in production, load from secure storage)
-            const keys = crypto.generateKeyPairs()
-            
-            setUser({
-              username: userData.username,
-              publicKey: keys.kyber.publicKey
-            })
-            setIsAuthenticated(true)
-          } else {
-            // Token expired, clear session
-            localStorage.removeItem('lockbox-token')
-            localStorage.removeItem('lockbox-user')
-          }
+          // Generate temporary keys for session
+          const keys = crypto.generateKeyPairs()
+          
+          setUser({
+            username: userData.username,
+            publicKey: keys.kyber.publicKey
+          })
+          setIsAuthenticated(true)
+          
+          console.log('Session restored for user:', userData.username)
         }
       } catch (error) {
         console.error('Session check failed:', error)
@@ -71,6 +58,7 @@ export default function SecureChatApp() {
     // Clear all session data
     localStorage.removeItem('lockbox-token')
     localStorage.removeItem('lockbox-user')
+    localStorage.removeItem('lockbox-user-id')
     setUser(null)
     setIsAuthenticated(false)
   }

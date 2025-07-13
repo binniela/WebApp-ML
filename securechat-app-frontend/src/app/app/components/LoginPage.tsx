@@ -75,8 +75,9 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
         }),
       })
 
-      // 4. Store JWT token and login successful
+      // 4. Store JWT token and user data
       localStorage.setItem('lockbox-token', data.access_token)
+      localStorage.setItem('lockbox-user-id', data.user.id)
       onLogin({ 
         username: data.user.username, 
         publicKey: keys.kyber.publicKey 
@@ -132,8 +133,9 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
         }),
       })
 
-      // 4. Store JWT token and registration successful
+      // 4. Store JWT token and user data
       localStorage.setItem('lockbox-token', data.access_token)
+      localStorage.setItem('lockbox-user-id', data.user.id)
       onLogin({ 
         username: data.user.username, 
         publicKey: keys.kyber.publicKey 

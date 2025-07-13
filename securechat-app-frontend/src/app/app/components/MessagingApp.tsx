@@ -222,7 +222,7 @@ export default function MessagingApp({ user, onLogout }: MessagingAppProps) {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ path: '/' })
+        body: JSON.stringify({ path: '/messages' })
       })
 
       if (response.ok) {
