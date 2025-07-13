@@ -27,15 +27,17 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'Path is required' });
       }
       
-      // Handle GET requests specially
-      if (path.includes('/users/search') || path.includes('/chat-requests/incoming') || path.includes('/contacts/') || path.includes('/messages') || path.includes('/conversation/')) {
-        targetUrl = `http://52.53.221.141${path}`;
-        requestBody = undefined;
+      // Always use POST for proxy requests but determine target method
+      targetUrl = `http://52.53.221.141${path}`;
+      
+      if (path.includes('/users/search') || path.includes('/chat-requests/incoming') || path.includes('/contacts/') || path === '/messages' || path.includes('/conversation/')) {
+        // These should be GET requests to the backend
         actualMethod = 'GET';
+        requestBody = undefined;
       } else {
-        targetUrl = `http://52.53.221.141${path}`;
+        // These should be POST requests to the backend
+        actualMethod = 'POST';
         requestBody = JSON.stringify(body);
-        actualMethod = req.method;
       }
     }
     
@@ -44,7 +46,7 @@ export default async function handler(req, res) {
     const response = await fetch(targetUrl, {
       method: actualMethod,
       headers: {
-        ...(actualMethod !== 'GET' && { 'Content-Type': 'application/json' }),
+        ...(actualMethod === 'POST' && { 'Content-Type': 'application/json' }),
         ...(req.headers.authorization && { 'Authorization': req.headers.authorization })
       },
       body: requestBody,
