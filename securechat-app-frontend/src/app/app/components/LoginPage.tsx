@@ -77,6 +77,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
 
       // 4. Store JWT token and user data
       localStorage.setItem('lockbox-token', data.access_token)
+      localStorage.setItem('lockbox-user', JSON.stringify({ username: data.user.username }))
       localStorage.setItem('lockbox-user-id', data.user.id)
       onLogin({ 
         username: data.user.username, 
@@ -135,6 +136,7 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
 
       // 4. Store JWT token and user data
       localStorage.setItem('lockbox-token', data.access_token)
+      localStorage.setItem('lockbox-user', JSON.stringify({ username: data.user.username }))
       localStorage.setItem('lockbox-user-id', data.user.id)
       onLogin({ 
         username: data.user.username, 
