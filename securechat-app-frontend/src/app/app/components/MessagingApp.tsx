@@ -171,6 +171,13 @@ export default function MessagingApp({ user, onLogout }: MessagingAppProps) {
         body: JSON.stringify({ path: '/contacts/pending' })
       })
       
+      // Handle 401 errors gracefully
+      if (contactsResponse.status === 401 || pendingResponse.status === 401) {
+        console.log('401 error loading contacts - continuing with empty list')
+        setContacts([])
+        return
+      }
+      
       if (contactsResponse.ok && pendingResponse.ok) {
         const activeContacts = await contactsResponse.json()
         const pendingContacts = await pendingResponse.json()
@@ -200,6 +207,9 @@ export default function MessagingApp({ user, onLogout }: MessagingAppProps) {
         ]
         
         setContacts(allContacts)
+      } else {
+        console.log('Error loading contacts, using empty list')
+        setContacts([])
       }
     } catch (error) {
       console.error('Failed to load contacts:', error)
