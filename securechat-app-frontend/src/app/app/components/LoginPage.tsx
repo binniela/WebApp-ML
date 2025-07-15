@@ -44,38 +44,10 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
       const data = await response.json()
       if (!response.ok) throw new Error(data.detail || 'Login failed')
 
-      // 2. Load or generate crypto keys CLIENT-SIDE
-      let keys
-      if (keyMethod === "generate") {
-        // Try to load existing keys first
-        keys = crypto.loadKeysFromStorage(password)
-        if (!keys) {
-          // Generate new keys if none exist
-          keys = crypto.generateKeyPairs()
-        }
-      } else {
-        // Import user's own keys
-        if (!importedKyberKey || !importedMldsaKey) {
-          throw new Error('Please provide both Kyber and ML-DSA private keys')
-        }
-        keys = crypto.importKeys(importedKyberKey, importedMldsaKey)
-      }
+      // 2. Generate simple keys
+      const keys = crypto.generateKeyPairs()
 
-      // 3. Send ONLY public keys to server
-      await fetch('/api/proxy', {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${data.access_token}`
-        },
-        body: JSON.stringify({
-          user_id: data.user.id,
-          kyber_public_key: keys.kyber.publicKey,
-          mldsa_public_key: keys.mldsa.publicKey
-        }),
-      })
-
-      // 4. Store JWT token and user data
+      // 3. Store JWT token and user data (skip problematic key storage)
       localStorage.setItem('lockbox-token', data.access_token)
       localStorage.setItem('lockbox-user', JSON.stringify({ username: data.user.username }))
       localStorage.setItem('lockbox-user-id', data.user.id)
@@ -109,32 +81,10 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
       const data = await response.json()
       if (!response.ok) throw new Error(data.detail || 'Registration failed')
 
-      // 2. Generate crypto keys CLIENT-SIDE
-      let keys
-      if (keyMethod === "generate") {
-        keys = crypto.generateKeyPairs()
-      } else {
-        if (!importedKyberKey || !importedMldsaKey) {
-          throw new Error('Please provide both Kyber and ML-DSA private keys')
-        }
-        keys = crypto.importKeys(importedKyberKey, importedMldsaKey)
-      }
+      // 2. Generate simple keys
+      const keys = crypto.generateKeyPairs()
 
-      // 3. Send ONLY public keys to server
-      await fetch('/api/proxy', {
-        method: 'POST',
-        headers: { 
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${data.access_token}`
-        },
-        body: JSON.stringify({
-          user_id: data.user.id,
-          kyber_public_key: keys.kyber.publicKey,
-          mldsa_public_key: keys.mldsa.publicKey
-        }),
-      })
-
-      // 4. Store JWT token and user data
+      // 3. Store JWT token and user data (skip problematic key storage)
       localStorage.setItem('lockbox-token', data.access_token)
       localStorage.setItem('lockbox-user', JSON.stringify({ username: data.user.username }))
       localStorage.setItem('lockbox-user-id', data.user.id)
