@@ -31,7 +31,7 @@ export default async function handler(req, res) {
       targetUrl = `http://52.53.221.141${path}`;
       
       if (path.includes('/users/search') || path.includes('/chat-requests/incoming') || path.includes('/contacts/') || path === '/messages' || path.includes('/conversation/')) {
-        // These should be GET requests to the backend
+        // These should be GET requests to the backend without auth validation
         actualMethod = 'GET';
         requestBody = undefined;
       } else {
