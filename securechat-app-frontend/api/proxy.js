@@ -9,55 +9,56 @@ export default async function handler(req, res) {
   }
 
   try {
-    // Mock responses since backend is unreachable
-    const { path } = req.method === 'GET' ? req.query : req.body;
+    let targetUrl, requestBody, actualMethod;
     
-    if (!path) {
-      return res.status(400).json({ error: 'Path is required' });
+    if (req.method === 'GET') {
+      // For GET requests, path comes from query params
+      const { path } = req.query;
+      if (!path) {
+        return res.status(400).json({ error: 'Path is required' });
+      }
+      targetUrl = `http://52.53.221.141${path}`;
+      requestBody = undefined;
+      actualMethod = 'GET';
+    } else {
+      // For POST requests, path comes from body
+      const { path, ...body } = req.body;
+      if (!path) {
+        return res.status(400).json({ error: 'Path is required' });
+      }
+      
+      // Always use POST for proxy requests but determine target method
+      targetUrl = `http://52.53.221.141${path}`;
+      
+      if (path.includes('/users/search') || path.includes('/chat-requests/incoming') || path.includes('/contacts/') || path === '/messages' || path.includes('/conversation/')) {
+        // These should be GET requests to the backend
+        actualMethod = 'GET';
+        requestBody = undefined;
+      } else {
+        // These should be POST requests to the backend
+        actualMethod = 'POST';
+        requestBody = JSON.stringify(body);
+      }
     }
     
-    console.log('Handling request for path:', path);
+    console.log('Proxying to:', targetUrl, 'Method:', actualMethod);
     
-    // Mock authentication endpoints
-    if (path === '/auth/register' || path === '/auth/login') {
-      const { username } = req.body;
-      return res.status(200).json({
-        access_token: `mock_token_${Date.now()}`,
-        token_type: "bearer",
-        user: { 
-          id: `user_${Date.now()}`, 
-          username: username || "user" 
-        }
-      });
+    const response = await fetch(targetUrl, {
+      method: actualMethod,
+      headers: {
+        ...(actualMethod === 'POST' && { 'Content-Type': 'application/json' }),
+        ...(req.headers.authorization && { 'Authorization': req.headers.authorization })
+      },
+      body: requestBody,
+    });
+
+    const text = await response.text();
+    try {
+      const data = JSON.parse(text);
+      res.status(response.status).json(data);
+    } catch {
+      res.status(response.status).json({ message: text });
     }
-    
-    // Mock data endpoints
-    if (path.includes('/contacts/') || path === '/contacts/') {
-      return res.status(200).json([]);
-    }
-    
-    if (path.includes('/chat-requests/incoming')) {
-      return res.status(200).json([]);
-    }
-    
-    if (path.includes('/users/search')) {
-      return res.status(200).json([]);
-    }
-    
-    if (path === '/messages' || path.includes('/conversation/')) {
-      return res.status(200).json([]);
-    }
-    
-    if (path === '/send') {
-      return res.status(200).json({ 
-        id: `msg_${Date.now()}`,
-        status: "sent" 
-      });
-    }
-    
-    // Default response for any other endpoint
-    return res.status(200).json({ success: true });
-    
   } catch (error) {
     console.error('Proxy error:', error);
     res.status(500).json({ error: 'Proxy failed', details: error.message });
