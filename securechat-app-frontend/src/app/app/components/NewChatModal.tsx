@@ -30,7 +30,7 @@ export default function NewChatModal({ onClose, onStartChat, darkMode }: NewChat
   // Search for users
   useEffect(() => {
     const searchUsers = async () => {
-      if (searchQuery.length < 2) {
+      if (!searchQuery || searchQuery.trim().length < 2) {
         setSearchResults([])
         return
       }
@@ -38,6 +38,12 @@ export default function NewChatModal({ onClose, onStartChat, darkMode }: NewChat
       setIsLoading(true)
       try {
         const token = localStorage.getItem('lockbox-token')
+        if (!token) {
+          console.error('No token available for search')
+          setSearchResults([])
+          return
+        }
+        
         const response = await fetch('/api/proxy', {
           method: 'POST',
           headers: {
@@ -45,15 +51,35 @@ export default function NewChatModal({ onClose, onStartChat, darkMode }: NewChat
             'Authorization': `Bearer ${token}`
           },
           body: JSON.stringify({
-            path: `/users/search?q=${encodeURIComponent(searchQuery)}`
+            path: `/users/search?q=${encodeURIComponent(searchQuery.trim())}`
           })
         })
 
         if (response.ok) {
           const users = await response.json()
-          setSearchResults(users)
+          // Ensure users is an array and filter out any invalid entries with comprehensive validation
+          const validUsers = Array.isArray(users) ? users.filter(user => {
+            try {
+              return user && 
+                     typeof user === 'object' && 
+                     user.id && 
+                     user.username && 
+                     typeof user.username === 'string' &&
+                     user.username.length > 0
+            } catch (e) {
+              return false
+            }
+          }).map(user => ({
+            ...user,
+            id: String(user.id),
+            username: String(user.username),
+            kyber_public_key: user.kyber_public_key || null,
+            mldsa_public_key: user.mldsa_public_key || null,
+            created_at: user.created_at || new Date().toISOString()
+          })) : []
+          setSearchResults(validUsers)
         } else {
-          console.error('Search failed')
+          console.error('Search failed:', response.status)
           setSearchResults([])
         }
       } catch (error) {
@@ -138,7 +164,7 @@ export default function NewChatModal({ onClose, onStartChat, darkMode }: NewChat
                 ) : searchResults.length > 0 ? (
                   searchResults.map((user) => (
                     <div
-                      key={user.id}
+                      key={user?.id || Math.random()}
                       className={`p-3 rounded-lg cursor-pointer transition-colors ${
                         darkMode 
                           ? 'hover:bg-zinc-800 border border-zinc-700' 
@@ -153,15 +179,15 @@ export default function NewChatModal({ onClose, onStartChat, darkMode }: NewChat
                           <User className="w-5 h-5" />
                         </div>
                         <div className="flex-1">
-                          <p className="font-medium">{user.username}</p>
+                          <p className="font-medium">{user?.username || 'Unknown User'}</p>
                           <p className={`text-xs ${darkMode ? 'text-zinc-400' : 'text-gray-500'}`}>
-                            {user.kyber_public_key ? 'Quantum-safe keys available' : 'No encryption keys'}
+                            {user?.kyber_public_key ? 'Quantum-safe keys available' : 'No encryption keys'}
                           </p>
                         </div>
                       </div>
                     </div>
                   ))
-                ) : searchQuery.length >= 2 ? (
+                ) : searchQuery && searchQuery.trim().length >= 2 ? (
                   <div className="text-center py-4 text-zinc-400">
                     No users found
                   </div>

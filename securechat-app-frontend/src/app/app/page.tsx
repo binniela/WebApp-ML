@@ -9,6 +9,7 @@ export default function SecureChatApp() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
   const [user, setUser] = useState<{ username: string; publicKey: string } | null>(null)
   const [isLoading, setIsLoading] = useState(true)
+  const [hasError, setHasError] = useState(false)
 
   const crypto = CryptoManager.getInstance()
 
@@ -23,11 +24,16 @@ export default function SecureChatApp() {
           // Skip token verification for faster startup - just restore session
           const userData = JSON.parse(savedUser)
           
+          // Validate userData
+          if (!userData || !userData.username || typeof userData.username !== 'string') {
+            throw new Error('Invalid user data')
+          }
+          
           // Generate temporary keys for session
           const keys = crypto.generateKeyPairs()
           
           setUser({
-            username: userData.username,
+            username: String(userData.username),
             publicKey: keys.kyber.publicKey
           })
           setIsAuthenticated(true)
@@ -36,9 +42,11 @@ export default function SecureChatApp() {
         }
       } catch (error) {
         console.error('Session check failed:', error)
+        setHasError(true)
         // Clear invalid session
         localStorage.removeItem('lockbox-token')
         localStorage.removeItem('lockbox-user')
+        localStorage.removeItem('lockbox-user-id')
       } finally {
         setIsLoading(false)
       }
@@ -61,6 +69,25 @@ export default function SecureChatApp() {
     localStorage.removeItem('lockbox-user-id')
     setUser(null)
     setIsAuthenticated(false)
+  }
+
+  // Show error screen if there's an error
+  if (hasError) {
+    return (
+      <div className="min-h-screen bg-black text-white flex items-center justify-center">
+        <div className="text-center">
+          <div className="text-red-500 text-6xl mb-4">⚠️</div>
+          <h2 className="text-xl font-semibold mb-2">Application Error</h2>
+          <p className="text-zinc-400 mb-4">Please refresh the page to try again</p>
+          <button 
+            onClick={() => window.location.reload()} 
+            className="bg-white text-black px-4 py-2 rounded hover:bg-zinc-200"
+          >
+            Refresh Page
+          </button>
+        </div>
+      </div>
+    )
   }
 
   // Show loading screen while checking session

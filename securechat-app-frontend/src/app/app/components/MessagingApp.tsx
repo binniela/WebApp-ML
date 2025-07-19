@@ -80,47 +80,52 @@ export default function MessagingApp({ user, onLogout }: MessagingAppProps) {
       await loadContacts()
       await loadMessages() // Load all messages on startup
       
-      // Connect WebSocket for real-time messaging
-      const token = localStorage.getItem('lockbox-token')
-      if (user && token) {
-        // Use username as user ID for WebSocket (matches backend expectations)
-        const userId = user.username
-        console.log('WebSocket connecting with user ID:', userId)
-        
-        wsManager.connect(userId, token)
-        console.log('WebSocket connection initiated')
-        
-        // Handle incoming WebSocket messages
-        wsManager.onMessage((message) => {
-          if (message.type === 'new_message') {
-            const newMessage = {
-              id: message.data.id,
-              content: message.data.content, // Already cleaned by backend
-              sender: message.data.sender,
-              timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-              isOwn: false,
-              isEncrypted: true,
-              status: 'delivered'
-            }
-            
-            // Add message to the appropriate conversation
-            // Use sender's user ID to match with contact ID
-            const senderId = message.data.sender_id
-            if (senderId) {
-              setMessages(prev => ({
-                ...prev,
-                [senderId]: [...(prev[senderId] || []), newMessage]
-              }))
-              
-              // Also update if this sender is the active contact
-              if (activeContact && activeContact.id === senderId) {
-                console.log('Message added to active conversation')
+      // Connect WebSocket for real-time messaging (disabled on HTTPS)
+      try {
+        const token = localStorage.getItem('lockbox-token')
+        if (user && token && window.location.protocol !== 'https:') {
+          // Use username as user ID for WebSocket (matches backend expectations)
+          const userId = user.username
+          console.log('WebSocket connecting with user ID:', userId)
+          
+          wsManager.connect(userId, token)
+          console.log('WebSocket connection initiated')
+        } else if (window.location.protocol === 'https:') {
+          console.log('WebSocket disabled on HTTPS - using polling mode')
+          
+          // Handle incoming WebSocket messages
+          wsManager.onMessage((message) => {
+            try {
+              if (message && message.type === 'new_message' && message.data) {
+                const newMessage = {
+                  id: message.data.id || Date.now().toString(),
+                  content: message.data.content || 'Message content unavailable',
+                  sender: message.data.sender || 'Unknown',
+                  timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
+                  isOwn: false,
+                  isEncrypted: true,
+                  status: 'delivered'
+                }
+                
+                // Add message to the appropriate conversation
+                const senderId = message.data.sender_id
+                if (senderId) {
+                  setMessages(prev => ({
+                    ...prev,
+                    [senderId]: [...(prev[senderId] || []), newMessage]
+                  }))
+                  
+                  console.log('🔥 Real-time message received via WebSocket:', newMessage)
+                }
               }
+            } catch (msgError) {
+              console.error('Error processing WebSocket message:', msgError)
             }
-            
-            console.log('🔥 Real-time message received via WebSocket:', newMessage)
-          }
-        })
+          })
+        }
+      } catch (wsError) {
+        console.error('WebSocket connection failed:', wsError)
+        // Continue without WebSocket - app will still work with polling
       }
     }
     
@@ -182,26 +187,44 @@ export default function MessagingApp({ user, onLogout }: MessagingAppProps) {
         const activeContacts = await contactsResponse.json()
         const pendingContacts = await pendingResponse.json()
         
-        // Convert to frontend format
+        // Convert to frontend format with comprehensive null checks
+        const safeActiveContacts = Array.isArray(activeContacts) ? activeContacts.filter(contact => 
+          contact && 
+          typeof contact === 'object' && 
+          contact.id && 
+          contact.username && 
+          typeof contact.username === 'string'
+        ) : []
+        
+        const safePendingContacts = Array.isArray(pendingContacts) ? pendingContacts.filter(contact => 
+          contact && 
+          typeof contact === 'object' && 
+          contact.id && 
+          contact.username && 
+          typeof contact.username === 'string'
+        ) : []
+        
+        const avatarPlaceholder = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSI+PGNpcmNsZSBjeD0iMjAiIGN5PSIyMCIgcj0iMjAiIGZpbGw9IiM0Qjc2ODgiLz48L3N2Zz4K'
+        
         const allContacts = [
-          ...activeContacts.map((contact: any) => ({
-            id: contact.id,
-            name: contact.username,
-            lastMessage: contact.last_message,
-            timestamp: new Date(contact.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            avatar: '/placeholder.svg?height=40&width=40',
-            isOnline: contact.is_online,
-            unreadCount: contact.unread_count,
+          ...safeActiveContacts.map((contact: any) => ({
+            id: String(contact.id),
+            name: String(contact.username),
+            lastMessage: String(contact.last_message || ''),
+            timestamp: contact.timestamp ? new Date(contact.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'now',
+            avatar: avatarPlaceholder,
+            isOnline: Boolean(contact.is_online),
+            unreadCount: Number(contact.unread_count) || 0,
             status: 'active' as const
           })),
-          ...pendingContacts.map((contact: any) => ({
-            id: contact.id,
-            name: contact.username,
-            lastMessage: contact.last_message,
-            timestamp: new Date(contact.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
-            avatar: '/placeholder.svg?height=40&width=40',
-            isOnline: contact.is_online,
-            unreadCount: contact.unread_count,
+          ...safePendingContacts.map((contact: any) => ({
+            id: String(contact.id),
+            name: String(contact.username),
+            lastMessage: String(contact.last_message || ''),
+            timestamp: contact.timestamp ? new Date(contact.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : 'now',
+            avatar: avatarPlaceholder,
+            isOnline: Boolean(contact.is_online),
+            unreadCount: Number(contact.unread_count) || 0,
             status: 'pending' as const
           }))
         ]
@@ -243,11 +266,25 @@ export default function MessagingApp({ user, onLogout }: MessagingAppProps) {
         const messagesByContact: { [contactId: string]: Message[] } = {}
         const contactsFromMessages: { [contactId: string]: Contact } = {}
         
-        for (const msg of serverMessages) {
+        const validMessages = Array.isArray(serverMessages) ? serverMessages.filter(msg => {
+          try {
+            return msg && 
+                   typeof msg === 'object' &&
+                   msg.id && 
+                   msg.sender_username && 
+                   typeof msg.sender_username === 'string' &&
+                   (msg.recipient_id || msg.sender_id) &&
+                   msg.encrypted_blob !== undefined
+          } catch (e) {
+            return false
+          }
+        }) : []
+        
+        for (const msg of validMessages) {
           // Determine which contact this message belongs to
           const isOwnMessage = msg.sender_username === user.username
           const contactId = isOwnMessage ? msg.recipient_id : msg.sender_id
-          const contactUsername = isOwnMessage ? 'Unknown' : msg.sender_username
+          const contactUsername = isOwnMessage ? 'Unknown' : (msg.sender_username || 'Unknown')
           
           if (!messagesByContact[contactId]) {
             messagesByContact[contactId] = []
@@ -260,15 +297,17 @@ export default function MessagingApp({ user, onLogout }: MessagingAppProps) {
               name: contactUsername,
               lastMessage: '',
               timestamp: 'now',
-              avatar: '/placeholder.svg?height=40&width=40',
+              avatar: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSI+PGNpcmNsZSBjeD0iMjAiIGN5PSIyMCIgcj0iMjAiIGZpbGw9IiM0Qjc2ODgiLz48L3N2Zz4K',
               isOnline: true,
               unreadCount: 0,
               status: 'active'
             }
           }
           
-          // Decrypt message content
-          const decryptedContent = msg.encrypted_blob.replace('encrypted_', '') || msg.encrypted_blob
+          // Decrypt message content with null check
+          const decryptedContent = msg.encrypted_blob ? 
+            (msg.encrypted_blob.replace('encrypted_', '') || msg.encrypted_blob) : 
+            'Message content unavailable'
           
           messagesByContact[contactId].push({
             id: msg.id,
@@ -399,7 +438,7 @@ export default function MessagingApp({ user, onLogout }: MessagingAppProps) {
         name: selectedUser.username,
         lastMessage: "Chat request sent...",
         timestamp: "now",
-        avatar: "/placeholder.svg?height=40&width=40",
+        avatar: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSI+PGNpcmNsZSBjeD0iMjAiIGN5PSIyMCIgcj0iMjAiIGZpbGw9IiM0Qjc2ODgiLz48L3N2Zz4K',
         isOnline: true,
         unreadCount: 0,
         status: "pending",
@@ -430,7 +469,7 @@ export default function MessagingApp({ user, onLogout }: MessagingAppProps) {
         name: request.from_username,
         lastMessage: "Chat request accepted",
         timestamp: "now",
-        avatar: "/placeholder.svg?height=40&width=40",
+        avatar: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSI+PGNpcmNsZSBjeD0iMjAiIGN5PSIyMCIgcj0iMjAiIGZpbGw9IiM0Qjc2ODgiLz48L3N2Zz4K',
         isOnline: true,
         unreadCount: 0,
         status: "active",

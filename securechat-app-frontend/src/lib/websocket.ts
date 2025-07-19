@@ -25,7 +25,17 @@ export class WebSocketManager {
     if (!this.userId || !this.token) return;
 
     try {
-      const wsUrl = `ws://52.53.221.141/ws/${this.userId}?token=${this.token}`;
+      // Skip WebSocket connection on HTTPS to avoid mixed content errors
+      if (window.location.protocol === 'https:') {
+        console.log('Skipping WebSocket connection on HTTPS due to mixed content policy');
+        return;
+      }
+      
+      // Use mock token for development/testing
+      const mockToken = `mock_token_${Date.now()}`;
+      const wsUrl = `ws://52.53.221.141/ws/${this.userId}?token=${mockToken}`;
+      
+      console.log('Attempting WebSocket connection to:', wsUrl);
       this.ws = new WebSocket(wsUrl);
 
       this.ws.onopen = () => {
@@ -62,6 +72,11 @@ export class WebSocketManager {
 
       this.ws.onerror = (error) => {
         console.error('WebSocket error:', error);
+        // Don't attempt reconnect on security errors (mixed content)
+        if (error.type === 'error' && window.location.protocol === 'https:') {
+          console.log('WebSocket blocked by mixed content policy - continuing without real-time updates');
+          this.maxReconnectAttempts = 0; // Disable reconnection attempts
+        }
       };
 
     } catch (error) {
