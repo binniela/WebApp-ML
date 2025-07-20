@@ -44,6 +44,9 @@ export default function NewChatModal({ onClose, onStartChat, darkMode }: NewChat
           return
         }
         
+        console.log('Searching for:', searchQuery.trim())
+        console.log('Using token:', token ? 'Token present' : 'No token')
+        
         const response = await fetch('/api/proxy', {
           method: 'POST',
           headers: {
@@ -55,8 +58,12 @@ export default function NewChatModal({ onClose, onStartChat, darkMode }: NewChat
           })
         })
 
+        console.log('Search response status:', response.status)
+        
         if (response.ok) {
           const users = await response.json()
+          console.log('Raw search results:', users)
+          
           // Ensure users is an array and filter out any invalid entries with comprehensive validation
           const validUsers = Array.isArray(users) ? users.filter(user => {
             try {
@@ -77,9 +84,12 @@ export default function NewChatModal({ onClose, onStartChat, darkMode }: NewChat
             mldsa_public_key: user.mldsa_public_key || null,
             created_at: user.created_at || new Date().toISOString()
           })) : []
+          
+          console.log('Processed search results:', validUsers)
           setSearchResults(validUsers)
         } else {
-          console.error('Search failed:', response.status)
+          const errorText = await response.text()
+          console.error('Search failed:', response.status, errorText)
           setSearchResults([])
         }
       } catch (error) {
