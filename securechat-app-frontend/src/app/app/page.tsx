@@ -3,6 +3,7 @@
 import { useState, useEffect } from "react"
 import LoginPage from "./components/LoginPage"
 import MessagingApp from "./components/MessagingApp"
+import { ErrorBoundary } from "./components/ErrorBoundary"
 import { CryptoManager } from "@/lib/crypto"
 
 export default function SecureChatApp() {
@@ -106,5 +107,9 @@ export default function SecureChatApp() {
     return <LoginPage onLogin={handleLogin} />
   }
 
-  return <MessagingApp user={user} onLogout={handleLogout} />
+  return (
+    <ErrorBoundary>
+      <MessagingApp user={user} onLogout={handleLogout} />
+    </ErrorBoundary>
+  )
 }

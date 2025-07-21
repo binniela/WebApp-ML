@@ -1,6 +1,7 @@
-from fastapi import APIRouter, HTTPException, status, Depends, Header
+from fastapi import APIRouter, HTTPException, status, Depends, Header, Request
 from app.utils.auth import verify_token
 from app.database import db
+from app.middleware.rate_limiter import rate_limiter
 from typing import List
 
 router = APIRouter(prefix="/users", tags=["users"])
@@ -22,7 +23,8 @@ def get_current_user(authorization: str = Header(None)):
     return user
 
 @router.post("/search")
-async def search_users(request_data: dict, current_user = Depends(get_current_user)):
+async def search_users(request: Request, request_data: dict, current_user = Depends(get_current_user)):
+    rate_limiter.check_rate_limit(request, max_requests=20, window_seconds=60)
     """Search for users by username"""
     try:
         q = request_data.get("q", "")

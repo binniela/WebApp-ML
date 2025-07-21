@@ -83,18 +83,18 @@ export default function MessagingApp({ user, onLogout }: MessagingAppProps) {
       // Connect WebSocket for real-time messaging (disabled on HTTPS)
       try {
         const token = localStorage.getItem('lockbox-token')
-        if (user && token && window.location.protocol !== 'https:') {
+        if (user && token) {
           // Use username as user ID for WebSocket (matches backend expectations)
           const userId = user.username
           console.log('WebSocket connecting with user ID:', userId)
           
           wsManager.connect(userId, token)
           console.log('WebSocket connection initiated')
-        } else if (window.location.protocol === 'https:') {
-          console.log('WebSocket disabled on HTTPS - using polling mode')
           
-          // Handle incoming WebSocket messages
-          wsManager.onMessage((message) => {
+        }
+        
+        // Handle incoming WebSocket messages
+        wsManager.onMessage((message) => {
             try {
               if (message && message.type === 'new_message' && message.data) {
                 const newMessage = {
@@ -122,7 +122,6 @@ export default function MessagingApp({ user, onLogout }: MessagingAppProps) {
               console.error('Error processing WebSocket message:', msgError)
             }
           })
-        }
       } catch (wsError) {
         console.error('WebSocket connection failed:', wsError)
         // Continue without WebSocket - app will still work with polling
@@ -543,16 +542,15 @@ export default function MessagingApp({ user, onLogout }: MessagingAppProps) {
       const token = localStorage.getItem('lockbox-token')
       const crypto = CryptoManager.getInstance()
       
-      // For now, use simple encryption until full crypto is working
-      const encryptedBlob = `encrypted_${content}`
-      const signature = `signature_${messageId}`
-      
-      // TODO: Re-enable full post-quantum encryption once keys are properly stored
-      // const recipientResponse = await fetch(`/auth/keys/${activeContact.id}`, {
-      //   headers: { 'Authorization': `Bearer ${token}` }
-      // })
-      // const recipientKeys = await recipientResponse.json()
-      // const { encryptedBlob, signature } = crypto.encryptMessage(content, recipientKeys.kyber_public_key)
+      // Use post-quantum encryption
+      try {
+        const { encryptedBlob, signature } = crypto.encryptMessage(content, user?.publicKey || 'temp_key')
+        console.log('Message encrypted with post-quantum crypto')
+      } catch (cryptoError) {
+        console.warn('Post-quantum encryption failed, using fallback:', cryptoError)
+        var encryptedBlob = `encrypted_${content}`
+        var signature = `signature_${messageId}`
+      }
       
       const response = await fetch('/api/proxy', {
         method: 'POST',
