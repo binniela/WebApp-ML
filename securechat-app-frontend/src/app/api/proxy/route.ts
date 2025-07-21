@@ -9,7 +9,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Path is required' }, { status: 400 })
     }
 
-    const targetUrl = `http://52.53.221.141${path}`
+    const targetUrl = `http://52.53.221.141:8000${path}`
     
     const getEndpoints = ['/contacts', '/contacts/pending', '/messages', '/messages/conversation/']
     const method = getEndpoints.some(endpoint => path === endpoint || path.startsWith(endpoint)) ? 'GET' : 'POST'
