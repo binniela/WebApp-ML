@@ -163,7 +163,7 @@ export default function MessagingApp({ user, onLogout }: MessagingAppProps) {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ path: '/contacts/' })
+        body: JSON.stringify({ path: '/contacts' })
       })
       
       // Load pending contacts
@@ -561,7 +561,7 @@ export default function MessagingApp({ user, onLogout }: MessagingAppProps) {
           'Authorization': `Bearer ${token}`
         },
         body: JSON.stringify({
-          path: '/send',
+          path: '/messages/send',
           recipient_id: activeContact.id,
           encrypted_blob: encryptedBlob,
           signature: signature,

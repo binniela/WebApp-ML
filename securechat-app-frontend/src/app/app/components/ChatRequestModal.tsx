@@ -48,7 +48,9 @@ export default function ChatRequestModal({
         const result = await response.json()
         onAccept(request)
       } else {
-        console.error('Failed to accept chat request')
+        const error = await response.text()
+        console.error('Failed to accept chat request:', response.status, error)
+        alert(`Failed to accept: ${error}`)
       }
     } catch (error) {
       console.error('Accept request error:', error)
@@ -74,7 +76,9 @@ export default function ChatRequestModal({
       if (response.ok) {
         onDecline(request)
       } else {
-        console.error('Failed to decline chat request')
+        const error = await response.text()
+        console.error('Failed to decline chat request:', response.status, error)
+        alert(`Failed to decline: ${error}`)
       }
     } catch (error) {
       console.error('Decline request error:', error)

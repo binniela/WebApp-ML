@@ -21,10 +21,11 @@ def get_current_user(authorization: str = Header(None)):
     
     return user
 
-@router.get("/search")
-async def search_users(q: str, current_user = Depends(get_current_user)):
+@router.post("/search")
+async def search_users(request_data: dict, current_user = Depends(get_current_user)):
     """Search for users by username"""
     try:
+        q = request_data.get("q", "")
         if len(q) < 2:
             return []
         

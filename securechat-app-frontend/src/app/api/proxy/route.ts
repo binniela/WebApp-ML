@@ -11,9 +11,7 @@ export async function POST(request: NextRequest) {
 
     const targetUrl = `http://52.53.221.141${path}`
     
-    const method = path.includes('/users/search') || 
-                  path.includes('/chat-requests/incoming') || 
-                  path.includes('/contacts/') || 
+    const method = path.includes('/contacts/') || 
                   path === '/messages' || 
                   path.includes('/conversation/') ? 'GET' : 'POST'
     

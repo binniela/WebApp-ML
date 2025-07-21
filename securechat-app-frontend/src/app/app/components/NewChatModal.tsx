@@ -54,7 +54,8 @@ export default function NewChatModal({ onClose, onStartChat, darkMode }: NewChat
             'Authorization': `Bearer ${token}`
           },
           body: JSON.stringify({
-            path: `/users/search?q=${encodeURIComponent(searchQuery.trim())}`
+            path: '/users/search',
+            q: searchQuery.trim()
           })
         })
 

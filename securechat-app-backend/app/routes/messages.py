@@ -93,7 +93,13 @@ async def send_encrypted_message(message_data: dict, current_user = Depends(get_
 async def get_encrypted_messages(current_user = Depends(get_current_user)):
     """Get encrypted message blobs for current user"""
     try:
-        messages = db.fetchall("messages", {"recipient_id": current_user['id']})
+        # Get all messages where user is sender or recipient
+        all_messages = db.fetchall("messages", {})
+        messages = [
+            msg for msg in all_messages 
+            if (msg.get('sender_id') == current_user['id'] or 
+                msg.get('recipient_id') == current_user['id'])
+        ]
         
         result = []
         for msg in messages:
