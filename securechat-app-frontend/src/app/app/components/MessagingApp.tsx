@@ -645,7 +645,7 @@ export default function MessagingApp({ user, onLogout }: MessagingAppProps) {
           'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
         },
-        body: JSON.stringify({ path: `/conversation/${contactId}` })
+        body: JSON.stringify({ path: `/messages/conversation/${contactId}` })
       })
       
       if (response.status === 401) {
