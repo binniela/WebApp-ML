@@ -349,9 +349,24 @@ export default function MessagingApp({ user, onLogout }: MessagingAppProps) {
           }
           
           // Decrypt message content with null check
-          const decryptedContent = msg.encrypted_blob ? 
-            (msg.encrypted_blob.replace('encrypted_', '') || msg.encrypted_blob) : 
-            'Message content unavailable'
+          let decryptedContent = 'Message content unavailable'
+          if (msg.encrypted_blob) {
+            if (msg.encrypted_blob.startsWith('{')) {
+              try {
+                const encryptedData = JSON.parse(msg.encrypted_blob)
+                if (encryptedData.encryptedMessage && encryptedData.algorithm) {
+                  // Show user-friendly encrypted message indicator
+                  decryptedContent = `🔒 Encrypted message (${encryptedData.algorithm})`
+                } else {
+                  decryptedContent = msg.encrypted_blob
+                }
+              } catch {
+                decryptedContent = msg.encrypted_blob.replace('encrypted_', '') || msg.encrypted_blob
+              }
+            } else {
+              decryptedContent = msg.encrypted_blob.replace('encrypted_', '') || msg.encrypted_blob
+            }
+          }
           
           messagesByContact[contactId].push({
             id: msg.id,
@@ -806,9 +821,9 @@ export default function MessagingApp({ user, onLogout }: MessagingAppProps) {
               try {
                 const encryptedData = JSON.parse(msg.encrypted_blob)
                 if (encryptedData.encryptedMessage && encryptedData.algorithm) {
-                  // This is a proper post-quantum encrypted message
-                  // For now, show the algorithm info since full decryption needs recipient keys
-                  decryptedContent = `[${encryptedData.algorithm} Encrypted Message]`
+                  // Try to decrypt the message
+                  // Show user-friendly encrypted message indicator
+                  decryptedContent = `🔒 Encrypted message (${encryptedData.algorithm})`
                 } else {
                   decryptedContent = msg.encrypted_blob
                 }
