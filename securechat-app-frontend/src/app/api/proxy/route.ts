@@ -14,7 +14,14 @@ export async function POST(request: NextRequest) {
     if (path.startsWith('/auth/')) {
       targetUrl = `http://52.53.221.141:8001${path.replace('/auth', '')}`
     } else if (path.startsWith('/messages') || path.startsWith('/chat-requests')) {
-      targetUrl = `http://52.53.221.141:8002${path}`
+      // Handle message service routing
+      if (path === '/messages/send') {
+        targetUrl = `http://52.53.221.141:8002/send`
+      } else if (path.startsWith('/messages/conversation/')) {
+        targetUrl = `http://52.53.221.141:8002/conversation/${path.split('/')[3]}`
+      } else {
+        targetUrl = `http://52.53.221.141:8002${path}`
+      }
     } else if (path.startsWith('/users/search')) {
       targetUrl = `http://52.53.221.141:8001${path}`
     } else {
@@ -27,6 +34,7 @@ export async function POST(request: NextRequest) {
     const method = getEndpoints.some(endpoint => path === endpoint || path.startsWith(endpoint)) ? 'GET' : 'POST'
     
     console.log(`Using method ${method} for path ${path}`)
+    console.log(`Final request: ${method} ${targetUrl}`)
     
     const response = await fetch(targetUrl, {
       method,
@@ -62,7 +70,14 @@ export async function GET(request: NextRequest) {
     if (path.startsWith('/auth/')) {
       targetUrl = `http://52.53.221.141:8001${path.replace('/auth', '')}`
     } else if (path.startsWith('/messages') || path.startsWith('/chat-requests')) {
-      targetUrl = `http://52.53.221.141:8002${path}`
+      // Handle message service routing for GET
+      if (path === '/messages') {
+        targetUrl = `http://52.53.221.141:8002/`
+      } else if (path.startsWith('/messages/conversation/')) {
+        targetUrl = `http://52.53.221.141:8002/conversation/${path.split('/')[3]}`
+      } else {
+        targetUrl = `http://52.53.221.141:8002${path}`
+      }
     } else if (path.startsWith('/users/search')) {
       targetUrl = `http://52.53.221.141:8001${path}`
     } else {
