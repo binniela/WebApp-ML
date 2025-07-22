@@ -47,15 +47,20 @@ class ConnectionManager:
             for connection in self.active_connections[user_id]:
                 try:
                     await connection.send_text(json.dumps(message))
-                    print(f"Message sent to user {user_id}")
-                except:
-                    self.active_connections[user_id].remove(connection)
+                    print(f"Message sent to user {user_id}: {message}")
+                except Exception as e:
+                    print(f"Failed to send to user {user_id}: {e}")
+                    try:
+                        self.active_connections[user_id].remove(connection)
+                    except ValueError:
+                        pass
 
     async def broadcast_new_message(self, recipient_id: str, message_data: dict):
         await self.send_to_user(recipient_id, {
             "type": "new_message",
             "data": message_data
         })
+        print(f"Broadcasting message to user {recipient_id}")
 
 manager = ConnectionManager()
 
@@ -83,12 +88,29 @@ async def websocket_endpoint(websocket: WebSocket, user_id: str, token: str = No
 async def broadcast_message(broadcast_data: dict):
     """Broadcast message to specific user (called by message service)"""
     try:
-        recipient_username = broadcast_data["recipient_username"]
+        recipient_id = broadcast_data["recipient_id"]
         message_data = broadcast_data["message_data"]
         
-        await manager.broadcast_new_message(recipient_username, message_data)
+        await manager.broadcast_new_message(recipient_id, message_data)
         
         return {"message": "Broadcast sent successfully"}
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.post("/notify")
+async def send_notification(notification_data: dict):
+    """Send notification to specific user (for chat requests)"""
+    try:
+        recipient_id = notification_data["recipient_id"]
+        notification = notification_data["notification_data"]
+        
+        await manager.send_to_user(recipient_id, {
+            "type": "notification",
+            "data": notification
+        })
+        
+        return {"message": "Notification sent successfully"}
         
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))

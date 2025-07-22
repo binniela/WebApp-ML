@@ -82,7 +82,7 @@ async def send_message(message_data: dict, current_user = Depends(get_current_us
         try:
             clean_content = message_data["encrypted_blob"].replace('encrypted_', '')
             broadcast_data = {
-                "recipient_username": recipient['username'],
+                "recipient_id": message_data["recipient_id"],
                 "message_data": {
                     "id": message_id,
                     "sender_id": current_user['id'],
@@ -102,6 +102,7 @@ async def send_message(message_data: dict, current_user = Depends(get_current_us
         
         return {
             "message": "Encrypted message stored successfully",
+            "id": message_id,
             "message_id": message_id,
             "conversation_id": conversation_id
         }
@@ -113,12 +114,17 @@ async def send_message(message_data: dict, current_user = Depends(get_current_us
 
 @app.get("/")
 async def get_messages(current_user = Depends(get_current_user)):
-    """Get user's messages"""
+    """Get user's messages (both sent and received)"""
     try:
-        messages = db.fetchall("messages", {"recipient_id": current_user['id']})
+        # Get all messages where user is sender OR recipient
+        all_messages = db.fetchall("messages", {})
+        user_messages = [
+            msg for msg in all_messages 
+            if msg.get('sender_id') == current_user['id'] or msg.get('recipient_id') == current_user['id']
+        ]
         
         result = []
-        for msg in messages:
+        for msg in user_messages:
             # Get sender info
             sender = db.fetchone("users", {"id": msg['sender_id']})
             sender_username = sender['username'] if sender else 'Unknown'
@@ -223,6 +229,22 @@ async def send_chat_request(request_data: dict, current_user = Depends(get_curre
             "message": request_data.get("message", "Hi! I'd like to start a secure conversation with you."),
             "status": "pending"
         })
+        
+        # Notify recipient via WebSocket
+        try:
+            notification_data = {
+                "recipient_id": request_data["recipient_id"],
+                "notification_data": {
+                    "type": "chat_request",
+                    "from_user_id": current_user['id'],
+                    "from_username": current_user['username'],
+                    "message": request_data.get("message", "Hi! I'd like to start a secure conversation with you.")
+                }
+            }
+            requests.post(f"{WEBSOCKET_SERVICE_URL}/notify", 
+                         json=notification_data, timeout=2)
+        except requests.RequestException:
+            print("WebSocket notification failed - request stored but not notified")
         
         return {"message": "Chat request sent successfully", "request_id": chat_request['id']}
         

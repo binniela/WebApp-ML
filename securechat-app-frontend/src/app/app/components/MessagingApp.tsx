@@ -140,6 +140,23 @@ export default function MessagingApp({ user, onLogout }: MessagingAppProps) {
                   console.log('🔥 Real-time message received via WebSocket:', newMessage)
                 }
               }
+              
+              // Handle chat request notifications
+              if (message && message.type === 'notification' && message.data) {
+                if (message.data.type === 'chat_request') {
+                  console.log('🔔 Chat request notification received')
+                  // Trigger chat request reload
+                  loadChatRequests()
+                  
+                  // Show browser notification
+                  if (Notification.permission === 'granted') {
+                    new Notification('New Chat Request', {
+                      body: `${message.data.from_username} wants to start a conversation`,
+                      icon: '/images/logo.png'
+                    })
+                  }
+                }
+              }
             } catch (msgError) {
               console.error('Error processing WebSocket message:', msgError)
             }
@@ -283,6 +300,12 @@ export default function MessagingApp({ user, onLogout }: MessagingAppProps) {
         const serverMessages = await response.json()
         console.log('Loaded messages from server:', serverMessages.length)
         
+        // Validate server response
+        if (!Array.isArray(serverMessages)) {
+          console.error('Invalid server response - expected array')
+          return
+        }
+        
         // Group messages by conversation (contact) and create contacts from messages
         const messagesByContact: { [contactId: string]: Message[] } = {}
         const contactsFromMessages: { [contactId: string]: Contact } = {}
@@ -363,9 +386,13 @@ export default function MessagingApp({ user, onLogout }: MessagingAppProps) {
             return contact
           })
           
-          // Persist to localStorage
-          localStorage.setItem('lockbox-contacts', JSON.stringify(updatedContacts))
-          localStorage.setItem('lockbox-messages', JSON.stringify(messagesByContact))
+          // Persist to localStorage with error handling
+          try {
+            localStorage.setItem('lockbox-contacts', JSON.stringify(updatedContacts))
+            localStorage.setItem('lockbox-messages', JSON.stringify(messagesByContact))
+          } catch (storageError) {
+            console.warn('localStorage full or unavailable:', storageError)
+          }
           
           return updatedContacts
         })
@@ -645,13 +672,14 @@ export default function MessagingApp({ user, onLogout }: MessagingAppProps) {
 
       if (response.ok) {
         const result = await response.json()
+        console.log('Message sent successfully:', result)
         
-        // Update message status to sent
+        // Update message status to sent with proper ID
         setMessages((prev) => {
           const updatedMessages = {
             ...prev,
             [activeContact.id]: (prev[activeContact.id] || []).map((msg) =>
-              msg.id === messageId ? { ...msg, status: "sent" as const, id: result.id || msg.id } : msg,
+              msg.id === messageId ? { ...msg, status: "sent" as const, id: result.id || result.message_id || msg.id } : msg,
             ),
           }
           // Persist to localStorage
