@@ -378,8 +378,8 @@ export default function MessagingApp({ user, onLogout }: MessagingAppProps) {
                   decryptedContent = cryptoManager.decryptMessage(msg.encrypted_blob, msg.signature, senderPublicKey)
                   console.log('Decryption successful for message:', msg.id)
                 } else {
-                  // Malformed encrypted data, show as-is
-                  decryptedContent = msg.encrypted_blob
+                  // Malformed encrypted data - show placeholder
+                  decryptedContent = '🔒 Encrypted message'
                 }
               } else {
                 // Simple encrypted format - remove prefix
@@ -387,8 +387,8 @@ export default function MessagingApp({ user, onLogout }: MessagingAppProps) {
               }
             } catch (decryptError) {
               console.warn('Decryption failed for message from', msg.sender_username, ':', (decryptError as Error).message)
-              // Show fallback content instead of error message
-              decryptedContent = msg.encrypted_blob.replace('encrypted_', '') || 'Unable to decrypt message'
+              // Show user-friendly message instead of encrypted blob
+              decryptedContent = '🔒 Unable to decrypt message'
             }
           }
           
@@ -862,10 +862,10 @@ export default function MessagingApp({ user, onLogout }: MessagingAppProps) {
                     decryptedContent = `🔒 Unable to decrypt message`
                   }
                 } else {
-                  decryptedContent = msg.encrypted_blob
+                  decryptedContent = '🔒 Encrypted message'
                 }
               } catch {
-                decryptedContent = msg.encrypted_blob
+                decryptedContent = '🔒 Encrypted message'
               }
             } else {
               // Simple format - just remove prefix
@@ -873,8 +873,8 @@ export default function MessagingApp({ user, onLogout }: MessagingAppProps) {
             }
           } catch (error) {
             console.error('Decryption error:', error)
-            // Fallback to showing the message without encryption
-            decryptedContent = msg.encrypted_blob.replace('encrypted_', '') || 'Message content unavailable'
+            // Show user-friendly message instead of encrypted blob
+            decryptedContent = '🔒 Unable to decrypt message'
           }
           
           formattedMessages.push({
