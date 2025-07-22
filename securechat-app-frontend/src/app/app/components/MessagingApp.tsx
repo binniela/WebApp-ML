@@ -78,7 +78,7 @@ export default function MessagingApp({ user, onLogout }: MessagingAppProps) {
     const loadInitialData = async () => {
       console.log('Loading initial data for user:', user.username)
       
-      // Load from localStorage first for instant UI
+      // Load from localStorage first for instant UI, then sync with server
       try {
         const savedContacts = localStorage.getItem('lockbox-contacts')
         const savedMessages = localStorage.getItem('lockbox-messages')
@@ -450,37 +450,59 @@ export default function MessagingApp({ user, onLogout }: MessagingAppProps) {
         setActiveContact(existingContact)
         return
       } else if (existingContact.status === "pending") {
-        // Show message that request is already pending
         alert("Chat request already sent to this user")
         return
       }
     }
 
-    // Create pending contact after successful request
-    if (selectedUser.status === 'pending') {
-      const newContact: Contact = {
-        id: selectedUser.id,
-        name: selectedUser.username,
-        lastMessage: "Chat request sent...",
-        timestamp: "now",
-        avatar: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSI+PGNpcmNsZSBjeD0iMjAiIGN5PSIyMCIgcj0iMjAiIGZpbGw9IiM0Qjc2ODgiLz48L3N2Zz4K',
-        isOnline: true,
-        unreadCount: 0,
-        status: "pending",
-      }
-
-      const updatedContacts = [...contacts, newContact]
-      setContacts(updatedContacts)
-      setMessages((prev) => {
-        const updatedMessages = {
-          ...prev,
-          [newContact.id]: [],
-        }
-        // Persist to localStorage
-        localStorage.setItem('lockbox-contacts', JSON.stringify(updatedContacts))
-        localStorage.setItem('lockbox-messages', JSON.stringify(updatedMessages))
-        return updatedMessages
+    try {
+      // Send chat request to server (Supabase)
+      const token = localStorage.getItem('lockbox-token')
+      const response = await fetch('/api/proxy', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          path: '/chat-requests/send',
+          recipient_id: selectedUser.id,
+          message: 'Hi! I\'d like to start a secure conversation with you.'
+        })
       })
+
+      if (response.ok) {
+        // Create pending contact after successful server request
+        const newContact: Contact = {
+          id: selectedUser.id,
+          name: selectedUser.username,
+          lastMessage: "Chat request sent...",
+          timestamp: "now",
+          avatar: 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgZmlsbD0ibm9uZSI+PGNpcmNsZSBjeD0iMjAiIGN5PSIyMCIgcj0iMjAiIGZpbGw9IiM0Qjc2ODgiLz48L3N2Zz4K',
+          isOnline: true,
+          unreadCount: 0,
+          status: "pending",
+        }
+
+        const updatedContacts = [...contacts, newContact]
+        setContacts(updatedContacts)
+        setMessages((prev) => {
+          const updatedMessages = {
+            ...prev,
+            [newContact.id]: [],
+          }
+          // Cache locally for instant UI
+          localStorage.setItem('lockbox-contacts', JSON.stringify(updatedContacts))
+          localStorage.setItem('lockbox-messages', JSON.stringify(updatedMessages))
+          return updatedMessages
+        })
+      } else {
+        const error = await response.json()
+        alert(`Failed to send chat request: ${error.detail}`)
+      }
+    } catch (error) {
+      console.error('Error sending chat request:', error)
+      alert('Failed to send chat request')
     }
   }
 

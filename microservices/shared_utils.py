@@ -87,5 +87,27 @@ class Database:
         except Exception as e:
             print(f"Database insert error: {e}")
             raise
+    
+    def update(self, table: str, data: dict, filters: dict):
+        try:
+            query = self.client.table(table).update(data)
+            for key, value in filters.items():
+                query = query.eq(key, value)
+            result = query.execute()
+            return result.data[0] if result.data else None
+        except Exception as e:
+            print(f"Database update error: {e}")
+            raise
+    
+    def delete(self, table: str, filters: dict):
+        try:
+            query = self.client.table(table).delete()
+            for key, value in filters.items():
+                query = query.eq(key, value)
+            result = query.execute()
+            return result.data
+        except Exception as e:
+            print(f"Database delete error: {e}")
+            raise
 
 db = Database()

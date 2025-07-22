@@ -176,19 +176,95 @@ async def get_conversation(contact_id: str, current_user = Depends(get_current_u
 
 @app.get("/chat-requests/incoming")
 async def get_incoming_chat_requests(current_user = Depends(get_current_user)):
-    """Get incoming chat requests"""
-    # Return empty for now - implement as needed
-    return []
+    """Get incoming chat requests from Supabase"""
+    try:
+        requests = db.fetchall("chat_requests", {"to_user_id": current_user['id'], "status": "pending"})
+        
+        result = []
+        for req in requests:
+            # Get sender info
+            sender = db.fetchone("users", {"id": req['from_user_id']})
+            if sender:
+                result.append({
+                    "id": req['id'],
+                    "from_user_id": req['from_user_id'],
+                    "from_username": sender['username'],
+                    "message": req['message'],
+                    "created_at": str(req['created_at'])
+                })
+        
+        return result
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/chat-requests/send")
 async def send_chat_request(request_data: dict, current_user = Depends(get_current_user)):
-    """Send chat request"""
-    return {"message": "Chat request sent"}
+    """Send chat request to Supabase"""
+    try:
+        # Verify recipient exists
+        recipient = db.fetchone("users", {"id": request_data["recipient_id"]})
+        if not recipient:
+            raise HTTPException(status_code=404, detail="Recipient not found")
+        
+        # Check if request already exists
+        existing = db.fetchone("chat_requests", {
+            "from_user_id": current_user['id'],
+            "to_user_id": request_data["recipient_id"],
+            "status": "pending"
+        })
+        
+        if existing:
+            raise HTTPException(status_code=400, detail="Chat request already sent")
+        
+        # Create chat request in Supabase
+        chat_request = db.insert("chat_requests", {
+            "from_user_id": current_user['id'],
+            "to_user_id": request_data["recipient_id"],
+            "message": request_data.get("message", "Hi! I'd like to start a secure conversation with you."),
+            "status": "pending"
+        })
+        
+        return {"message": "Chat request sent successfully", "request_id": chat_request['id']}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 @app.post("/chat-requests/respond")
 async def respond_to_chat_request(response_data: dict, current_user = Depends(get_current_user)):
-    """Respond to chat request"""
-    return {"message": "Response sent"}
+    """Respond to chat request in Supabase"""
+    try:
+        request_id = response_data["request_id"]
+        action = response_data["action"]  # "accept" or "decline"
+        
+        # Get the chat request
+        chat_request = db.fetchone("chat_requests", {"id": request_id})
+        if not chat_request:
+            raise HTTPException(status_code=404, detail="Chat request not found")
+        
+        # Verify user is the recipient
+        if chat_request['to_user_id'] != current_user['id']:
+            raise HTTPException(status_code=403, detail="Not authorized")
+        
+        # Update request status in Supabase
+        status = "accepted" if action == "accept" else "declined"
+        db.update("chat_requests", {"status": status}, {"id": request_id})
+        
+        # If accepted, create conversation
+        if action == "accept":
+            conversation = db.insert("conversations", {
+                "participant1_id": chat_request['from_user_id'],
+                "participant2_id": current_user['id']
+            })
+            return {"message": "Chat request accepted", "conversation_id": conversation['id']}
+        
+        return {"message": f"Chat request {status}"}
+        
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
 
 if __name__ == "__main__":
     import uvicorn
