@@ -357,9 +357,9 @@ export default function MessagingApp({ user, onLogout }: MessagingAppProps) {
                 if (encryptedData.encryptedMessage && encryptedData.algorithm) {
                   try {
                     const cryptoManager = CryptoManager.getInstance()
-                    // Get recipient's ML-DSA public key for signature verification
-                    const userKeys = cryptoManager.getPublicKeys()
-                    const senderMLDSAKey = userKeys?.mldsa || msg.sender_public_key
+                    // For signature verification, we need the sender's ML-DSA public key
+                    // For now, simulate with deterministic key based on sender ID
+                    const senderMLDSAKey = `sender_${msg.sender_id}_mldsa_key`
                     
                     console.log('Attempting decryption for message from:', msg.sender_username)
                     decryptedContent = cryptoManager.decryptMessage(msg.encrypted_blob, msg.signature, senderMLDSAKey)
@@ -671,7 +671,10 @@ export default function MessagingApp({ user, onLogout }: MessagingAppProps) {
       let signature: string
       
       try {
-        const encrypted = crypto.encryptMessage(content, user?.publicKey || 'temp_key')
+        // Need to get recipient's Kyber public key for proper encryption
+        // For now, simulate with a deterministic key based on recipient ID
+        const recipientKyberKey = `recipient_${activeContact.id}_kyber_key`
+        const encrypted = crypto.encryptMessage(content, recipientKyberKey)
         encryptedBlob = encrypted.encryptedBlob
         signature = encrypted.signature
         console.log('Message encrypted with post-quantum crypto')
