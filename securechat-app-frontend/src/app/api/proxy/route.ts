@@ -52,19 +52,22 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Path is required' }, { status: 400 })
     }
 
-    const { url: targetUrl, method } = getTargetUrl(path)
+    const { url: targetUrl, method: expectedMethod } = getTargetUrl(path)
     
-    console.log(`POST: Routing ${path} to ${targetUrl} (${method})`)
+    // For GET endpoints called via POST, use GET method
+    const actualMethod = expectedMethod === 'GET' ? 'GET' : 'POST'
+    
+
     
     const response = await fetch(targetUrl, {
-      method,
+      method: actualMethod,
       headers: {
         'Content-Type': 'application/json',
         ...(request.headers.get('authorization') && { 
           'Authorization': request.headers.get('authorization')! 
         })
       },
-      body: method === 'POST' ? JSON.stringify(requestBody) : undefined,
+      body: actualMethod === 'POST' ? JSON.stringify(requestBody) : undefined,
     })
 
     const data = await response.json()
