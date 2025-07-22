@@ -22,22 +22,23 @@ function getTargetUrl(path: string): { url: string, method: string } {
   if (ENDPOINT_MAPPING[path]) {
     const mapping = ENDPOINT_MAPPING[path]
     return {
-      url: `http://52.53.221.141:8080${path}`,
+      url: `http://52.53.221.141:${mapping.service}${mapping.endpoint}`,
       method: mapping.method
     }
   }
   
   // Handle dynamic paths
   if (path.startsWith('/messages/conversation/')) {
+    const contactId = path.split('/')[3]
     return {
-      url: `http://52.53.221.141:8080${path}`,
+      url: `http://52.53.221.141:8002/conversation/${contactId}`,
       method: 'GET'
     }
   }
   
   // Default fallback
   return {
-    url: `http://52.53.221.141:8080${path}`,
+    url: `http://52.53.221.141${path}`,
     method: 'POST'
   }
 }
