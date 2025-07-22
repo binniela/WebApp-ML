@@ -32,14 +32,26 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
     setIsLoading(true)
 
     try {
-      // 1. Authenticate with server
-      const response = await fetch('/api/proxy', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ path: '/auth/login', username, password })
-      })
+      // 1. Try main auth, fallback if timeout
+      let response
+      try {
+        response = await fetch('/api/proxy', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ path: '/auth/login', username, password })
+        })
+      } catch (error) {
+        console.warn('Main auth failed, using fallback')
+        response = await fetch('/api/fallback-auth', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ username, password })
+        })
+      }
 
       const data = await response.json()
       if (!response.ok) throw new Error(data.detail || 'Login failed')
@@ -70,14 +82,26 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
     setIsLoading(true)
 
     try {
-      // 1. Register with server
-      const response = await fetch('/api/proxy', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({ path: '/auth/register', username, password })
-      })
+      // 1. Try main register, fallback if timeout
+      let response
+      try {
+        response = await fetch('/api/proxy', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ path: '/auth/register', username, password })
+        })
+      } catch (error) {
+        console.warn('Main register failed, using fallback')
+        response = await fetch('/api/fallback-auth', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({ username, password })
+        })
+      }
 
       const data = await response.json()
       if (!response.ok) throw new Error(data.detail || 'Registration failed')
