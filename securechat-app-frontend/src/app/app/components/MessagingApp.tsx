@@ -355,8 +355,13 @@ export default function MessagingApp({ user, onLogout }: MessagingAppProps) {
               try {
                 const encryptedData = JSON.parse(msg.encrypted_blob)
                 if (encryptedData.encryptedMessage && encryptedData.algorithm) {
-                  // Show user-friendly encrypted message indicator
-                  decryptedContent = `🔒 Encrypted message (${encryptedData.algorithm})`
+                  try {
+                    const cryptoManager = CryptoManager.getInstance()
+                    decryptedContent = cryptoManager.decryptMessage(msg.encrypted_blob, msg.signature, msg.sender_public_key)
+                  } catch (decryptError) {
+                    console.warn('Decryption failed:', decryptError)
+                    decryptedContent = `🔒 Unable to decrypt message`
+                  }
                 } else {
                   decryptedContent = msg.encrypted_blob
                 }
@@ -809,7 +814,7 @@ export default function MessagingApp({ user, onLogout }: MessagingAppProps) {
       if (response.ok) {
         const contactMessages = await response.json()
         
-        const crypto = CryptoManager.getInstance()
+        const cryptoManager = CryptoManager.getInstance()
         const formattedMessages: Message[] = []
         
         for (const msg of contactMessages) {
@@ -821,9 +826,12 @@ export default function MessagingApp({ user, onLogout }: MessagingAppProps) {
               try {
                 const encryptedData = JSON.parse(msg.encrypted_blob)
                 if (encryptedData.encryptedMessage && encryptedData.algorithm) {
-                  // Try to decrypt the message
-                  // Show user-friendly encrypted message indicator
-                  decryptedContent = `🔒 Encrypted message (${encryptedData.algorithm})`
+                  try {
+                    decryptedContent = cryptoManager.decryptMessage(msg.encrypted_blob, msg.signature, msg.sender_public_key)
+                  } catch (decryptError) {
+                    console.warn('Decryption failed:', decryptError)
+                    decryptedContent = `🔒 Unable to decrypt message`
+                  }
                 } else {
                   decryptedContent = msg.encrypted_blob
                 }
