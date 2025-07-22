@@ -1,114 +1,103 @@
-// WebSocket manager for real-time messaging
-export class WebSocketManager {
-  private static instance: WebSocketManager;
-  private ws: WebSocket | null = null;
-  private userId: string | null = null;
-  private token: string | null = null;
-  private messageHandlers: ((message: any) => void)[] = [];
-  private reconnectAttempts = 0;
-  private maxReconnectAttempts = 5;
-
-  static getInstance(): WebSocketManager {
-    if (!WebSocketManager.instance) {
-      WebSocketManager.instance = new WebSocketManager();
-    }
-    return WebSocketManager.instance;
-  }
+class WebSocketManager {
+  private ws: WebSocket | null = null
+  private userId: string | null = null
+  private token: string | null = null
+  private reconnectAttempts = 0
+  private maxReconnectAttempts = 5
+  private reconnectDelay = 1000
+  private messageHandlers: ((message: any) => void)[] = []
 
   connect(userId: string, token: string) {
-    this.userId = userId;
-    this.token = token;
-    this.connectWebSocket();
-  }
-
-  private connectWebSocket() {
-    if (!this.userId || !this.token) return;
-
+    this.userId = userId
+    this.token = token
+    
     try {
-      // Skip WebSocket connection on HTTPS to avoid mixed content errors
-      if (window.location.protocol === 'https:') {
-        console.log('Skipping WebSocket connection on HTTPS due to mixed content policy');
-        return;
+      // Use HTTP for local development, HTTPS for production
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
+      const wsUrl = `${protocol}//52.53.221.141/ws/${userId}?token=${token}`
+      
+      console.log('Connecting to WebSocket:', wsUrl)
+      
+      this.ws = new WebSocket(wsUrl)
+      
+      this.ws.onopen = () => {
+        console.log('WebSocket connected')
+        this.reconnectAttempts = 0
+        
+        // Send ping to keep connection alive
+        this.sendPing()
+        setInterval(() => this.sendPing(), 30000) // Ping every 30 seconds
       }
       
-      // Use mock token for development/testing
-      const mockToken = `mock_token_${Date.now()}`;
-      const wsUrl = `ws://52.53.221.141/ws/${this.userId}?token=${mockToken}`;
-      
-      console.log('Attempting WebSocket connection to:', wsUrl);
-      this.ws = new WebSocket(wsUrl);
-
-      this.ws.onopen = () => {
-        console.log('WebSocket connected');
-        this.reconnectAttempts = 0;
-        
-        // Send ping every 30 seconds to keep connection alive
-        setInterval(() => {
-          if (this.ws?.readyState === WebSocket.OPEN) {
-            this.ws.send(JSON.stringify({ type: 'ping' }));
-          }
-        }, 30000);
-      };
-
       this.ws.onmessage = (event) => {
         try {
-          const message = JSON.parse(event.data);
+          const message = JSON.parse(event.data)
+          console.log('WebSocket message received:', message)
           
+          // Handle pong responses
           if (message.type === 'pong') {
-            return; // Ignore pong responses
+            return
           }
           
           // Notify all message handlers
-          this.messageHandlers.forEach(handler => handler(message));
+          this.messageHandlers.forEach(handler => {
+            try {
+              handler(message)
+            } catch (error) {
+              console.error('Message handler error:', error)
+            }
+          })
         } catch (error) {
-          console.error('Error parsing WebSocket message:', error);
+          console.error('WebSocket message parsing error:', error)
         }
-      };
-
-      this.ws.onclose = () => {
-        console.log('WebSocket disconnected');
-        this.attemptReconnect();
-      };
-
-      this.ws.onerror = (error) => {
-        console.error('WebSocket error:', error);
-        // Don't attempt reconnect on security errors (mixed content)
-        if (error.type === 'error' && window.location.protocol === 'https:') {
-          console.log('WebSocket blocked by mixed content policy - continuing without real-time updates');
-          this.maxReconnectAttempts = 0; // Disable reconnection attempts
-        }
-      };
-
-    } catch (error) {
-      console.error('Failed to connect WebSocket:', error);
-      this.attemptReconnect();
-    }
-  }
-
-  private attemptReconnect() {
-    if (this.reconnectAttempts < this.maxReconnectAttempts) {
-      this.reconnectAttempts++;
-      console.log(`Attempting to reconnect WebSocket (${this.reconnectAttempts}/${this.maxReconnectAttempts})`);
+      }
       
-      setTimeout(() => {
-        this.connectWebSocket();
-      }, 2000 * this.reconnectAttempts); // Exponential backoff
+      this.ws.onclose = (event) => {
+        console.log('WebSocket closed:', event.code, event.reason)
+        this.ws = null
+        
+        // Attempt to reconnect if not manually closed
+        if (event.code !== 1000 && this.reconnectAttempts < this.maxReconnectAttempts) {
+          setTimeout(() => {
+            this.reconnectAttempts++
+            console.log(`Reconnecting... Attempt ${this.reconnectAttempts}`)
+            this.connect(this.userId!, this.token!)
+          }, this.reconnectDelay * this.reconnectAttempts)
+        }
+      }
+      
+      this.ws.onerror = (error) => {
+        console.error('WebSocket error:', error)
+      }
+      
+    } catch (error) {
+      console.error('WebSocket connection failed:', error)
     }
   }
-
-  onMessage(handler: (message: any) => void) {
-    this.messageHandlers.push(handler);
-  }
-
+  
   disconnect() {
     if (this.ws) {
-      this.ws.close();
-      this.ws = null;
+      this.ws.close(1000, 'Manual disconnect')
+      this.ws = null
     }
-    this.messageHandlers = [];
-    this.userId = null;
-    this.token = null;
+    this.userId = null
+    this.token = null
+    this.messageHandlers = []
+  }
+  
+  sendPing() {
+    if (this.ws && this.ws.readyState === WebSocket.OPEN) {
+      this.ws.send(JSON.stringify({ type: 'ping' }))
+    }
+  }
+  
+  onMessage(handler: (message: any) => void) {
+    this.messageHandlers.push(handler)
+  }
+  
+  isConnected(): boolean {
+    return this.ws !== null && this.ws.readyState === WebSocket.OPEN
   }
 }
 
-export const wsManager = WebSocketManager.getInstance();
+export const wsManager = new WebSocketManager()

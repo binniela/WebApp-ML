@@ -11,7 +11,7 @@ import Image from 'next/image'
 import { CryptoManager } from '@/lib/crypto'
 
 interface LoginPageProps {
-  onLogin: (userData: { username: string; publicKey: string }) => void
+  onLogin: (userData: { username: string; publicKey: string; userId: string }) => void
 }
 
 export default function LoginPage({ onLogin }: LoginPageProps) {
@@ -53,7 +53,8 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
       localStorage.setItem('lockbox-user-id', data.user.id)
       onLogin({ 
         username: data.user.username, 
-        publicKey: keys.kyber.publicKey 
+        publicKey: keys.kyber.publicKey,
+        userId: data.user.id
       })
 
     } catch (error: any) {
@@ -90,7 +91,8 @@ export default function LoginPage({ onLogin }: LoginPageProps) {
       localStorage.setItem('lockbox-user-id', data.user.id)
       onLogin({ 
         username: data.user.username, 
-        publicKey: keys.kyber.publicKey 
+        publicKey: keys.kyber.publicKey,
+        userId: data.user.id
       })
 
     } catch (error: any) {

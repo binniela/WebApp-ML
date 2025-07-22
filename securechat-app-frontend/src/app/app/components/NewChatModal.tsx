@@ -47,16 +47,11 @@ export default function NewChatModal({ onClose, onStartChat, darkMode }: NewChat
         console.log('Searching for:', searchQuery.trim())
         console.log('Using token:', token ? 'Token present' : 'No token')
         
-        const response = await fetch('/api/proxy', {
-          method: 'POST',
+        const response = await fetch(`/api/proxy?path=/users/search&q=${encodeURIComponent(searchQuery.trim())}`, {
+          method: 'GET',
           headers: {
-            'Content-Type': 'application/json',
             'Authorization': `Bearer ${token}`
-          },
-          body: JSON.stringify({
-            path: '/users/search',
-            q: searchQuery.trim()
-          })
+          }
         })
 
         console.log('Search response status:', response.status)

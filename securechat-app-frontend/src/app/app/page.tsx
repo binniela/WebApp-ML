@@ -8,7 +8,7 @@ import { CryptoManager } from "@/lib/crypto"
 
 export default function SecureChatApp() {
   const [isAuthenticated, setIsAuthenticated] = useState(false)
-  const [user, setUser] = useState<{ username: string; publicKey: string } | null>(null)
+  const [user, setUser] = useState<{ username: string; publicKey: string; userId: string } | null>(null)
   const [isLoading, setIsLoading] = useState(true)
   const [hasError, setHasError] = useState(false)
 
@@ -33,9 +33,12 @@ export default function SecureChatApp() {
           // Generate temporary keys for session
           const keys = crypto.generateKeyPairs()
           
+          const userId = localStorage.getItem('lockbox-user-id') || 'temp-id'
+          
           setUser({
             username: String(userData.username),
-            publicKey: keys.kyber.publicKey
+            publicKey: keys.kyber.publicKey,
+            userId: userId
           })
           setIsAuthenticated(true)
           
@@ -56,7 +59,7 @@ export default function SecureChatApp() {
     checkExistingSession()
   }, [])
 
-  const handleLogin = (userData: { username: string; publicKey: string }) => {
+  const handleLogin = (userData: { username: string; publicKey: string; userId: string }) => {
     // Save user data to localStorage for session persistence
     localStorage.setItem('lockbox-user', JSON.stringify(userData))
     setUser(userData)

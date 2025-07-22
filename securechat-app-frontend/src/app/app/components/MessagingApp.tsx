@@ -14,6 +14,7 @@ import ChatRequestModal from "./ChatRequestModal"
 interface User {
   username: string
   publicKey: string
+  userId: string
 }
 
 interface Contact {
@@ -80,12 +81,12 @@ export default function MessagingApp({ user, onLogout }: MessagingAppProps) {
       await loadContacts()
       await loadMessages() // Load all messages on startup
       
-      // Connect WebSocket for real-time messaging (disabled on HTTPS)
+      // Connect WebSocket for real-time messaging
       try {
         const token = localStorage.getItem('lockbox-token')
         if (user && token) {
-          // Use username as user ID for WebSocket (matches backend expectations)
-          const userId = user.username
+          // Use userId for WebSocket connection
+          const userId = user.userId
           console.log('WebSocket connecting with user ID:', userId)
           
           wsManager.connect(userId, token)
@@ -543,13 +544,18 @@ export default function MessagingApp({ user, onLogout }: MessagingAppProps) {
       const crypto = CryptoManager.getInstance()
       
       // Use post-quantum encryption
+      let encryptedBlob: string
+      let signature: string
+      
       try {
-        const { encryptedBlob, signature } = crypto.encryptMessage(content, user?.publicKey || 'temp_key')
+        const encrypted = crypto.encryptMessage(content, user?.publicKey || 'temp_key')
+        encryptedBlob = encrypted.encryptedBlob
+        signature = encrypted.signature
         console.log('Message encrypted with post-quantum crypto')
       } catch (cryptoError) {
         console.warn('Post-quantum encryption failed, using fallback:', cryptoError)
-        var encryptedBlob = `encrypted_${content}`
-        var signature = `signature_${messageId}`
+        encryptedBlob = `encrypted_${content}`
+        signature = `signature_${messageId}`
       }
       
       const response = await fetch('/api/proxy', {
