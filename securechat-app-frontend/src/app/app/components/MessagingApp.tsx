@@ -77,6 +77,27 @@ export default function MessagingApp({ user, onLogout }: MessagingAppProps) {
     // Load essential data first
     const loadInitialData = async () => {
       console.log('Loading initial data for user:', user.username)
+      
+      // Load from localStorage first for instant UI
+      try {
+        const savedContacts = localStorage.getItem('lockbox-contacts')
+        const savedMessages = localStorage.getItem('lockbox-messages')
+        
+        if (savedContacts) {
+          const parsedContacts = JSON.parse(savedContacts)
+          setContacts(parsedContacts)
+          console.log('Loaded contacts from localStorage:', parsedContacts.length)
+        }
+        
+        if (savedMessages) {
+          const parsedMessages = JSON.parse(savedMessages)
+          setMessages(parsedMessages)
+          console.log('Loaded messages from localStorage')
+        }
+      } catch (error) {
+        console.error('Error loading from localStorage:', error)
+      }
+      
       await loadChatRequests()
       await loadContacts()
       await loadMessages() // Load all messages on startup
@@ -342,6 +363,10 @@ export default function MessagingApp({ user, onLogout }: MessagingAppProps) {
             return contact
           })
           
+          // Persist to localStorage
+          localStorage.setItem('lockbox-contacts', JSON.stringify(updatedContacts))
+          localStorage.setItem('lockbox-messages', JSON.stringify(messagesByContact))
+          
           return updatedContacts
         })
         
@@ -444,11 +469,18 @@ export default function MessagingApp({ user, onLogout }: MessagingAppProps) {
         status: "pending",
       }
 
-      setContacts((prev) => [...prev, newContact])
-      setMessages((prev) => ({
-        ...prev,
-        [newContact.id]: [],
-      }))
+      const updatedContacts = [...contacts, newContact]
+      setContacts(updatedContacts)
+      setMessages((prev) => {
+        const updatedMessages = {
+          ...prev,
+          [newContact.id]: [],
+        }
+        // Persist to localStorage
+        localStorage.setItem('lockbox-contacts', JSON.stringify(updatedContacts))
+        localStorage.setItem('lockbox-messages', JSON.stringify(updatedMessages))
+        return updatedMessages
+      })
     }
   }
 
@@ -479,13 +511,21 @@ export default function MessagingApp({ user, onLogout }: MessagingAppProps) {
       setContacts((prev) => {
         // Remove any existing contact with same ID
         const filtered = prev.filter(c => c.id !== newContact.id)
-        return [...filtered, newContact]
+        const updatedContacts = [...filtered, newContact]
+        // Persist to localStorage
+        localStorage.setItem('lockbox-contacts', JSON.stringify(updatedContacts))
+        return updatedContacts
       })
       
-      setMessages((prev) => ({
-        ...prev,
-        [newContact.id]: [],
-      }))
+      setMessages((prev) => {
+        const updatedMessages = {
+          ...prev,
+          [newContact.id]: [],
+        }
+        // Persist to localStorage
+        localStorage.setItem('lockbox-messages', JSON.stringify(updatedMessages))
+        return updatedMessages
+      })
       
       setActiveContact(newContact)
       
@@ -522,13 +562,18 @@ export default function MessagingApp({ user, onLogout }: MessagingAppProps) {
       status: "sending",
     }
 
-    setMessages((prev) => ({
-      ...prev,
-      [activeContact.id]: [...(prev[activeContact.id] || []), newMessage],
-    }))
+    setMessages((prev) => {
+      const updatedMessages = {
+        ...prev,
+        [activeContact.id]: [...(prev[activeContact.id] || []), newMessage],
+      }
+      // Persist to localStorage
+      localStorage.setItem('lockbox-messages', JSON.stringify(updatedMessages))
+      return updatedMessages
+    })
 
-    setContacts((prev) =>
-      prev.map((contact) =>
+    setContacts((prev) => {
+      const updatedContacts = prev.map((contact) =>
         contact.id === activeContact.id
           ? {
               ...contact,
@@ -536,8 +581,11 @@ export default function MessagingApp({ user, onLogout }: MessagingAppProps) {
               timestamp: "now",
             }
           : contact,
-      ),
-    )
+      )
+      // Persist to localStorage
+      localStorage.setItem('lockbox-contacts', JSON.stringify(updatedContacts))
+      return updatedContacts
+    })
 
     try {
       const token = localStorage.getItem('lockbox-token')
@@ -577,21 +625,30 @@ export default function MessagingApp({ user, onLogout }: MessagingAppProps) {
         const result = await response.json()
         
         // Update message status to sent
-        setMessages((prev) => ({
-          ...prev,
-          [activeContact.id]: (prev[activeContact.id] || []).map((msg) =>
-            msg.id === messageId ? { ...msg, status: "sent", id: result.id || msg.id } : msg,
-          ),
-        }))
+        setMessages((prev) => {
+          const updatedMessages = {
+            ...prev,
+            [activeContact.id]: (prev[activeContact.id] || []).map((msg) =>
+              msg.id === messageId ? { ...msg, status: "sent" as const, id: result.id || msg.id } : msg,
+            ),
+          }
+          // Persist to localStorage
+          localStorage.setItem('lockbox-messages', JSON.stringify(updatedMessages))
+          return updatedMessages
+        })
 
         // Simulate delivery confirmation
         setTimeout(() => {
-          setMessages((prev) => ({
-            ...prev,
-            [activeContact.id]: (prev[activeContact.id] || []).map((msg) =>
-              msg.id === messageId ? { ...msg, status: "delivered" } : msg,
-            ),
-          }))
+          setMessages((prev) => {
+            const updatedMessages = {
+              ...prev,
+              [activeContact.id]: (prev[activeContact.id] || []).map((msg) =>
+                msg.id === messageId ? { ...msg, status: "delivered" as const } : msg,
+              ),
+            }
+            localStorage.setItem('lockbox-messages', JSON.stringify(updatedMessages))
+            return updatedMessages
+          })
         }, 1000)
       } else {
         // Update message status to failed
@@ -605,12 +662,16 @@ export default function MessagingApp({ user, onLogout }: MessagingAppProps) {
     } catch (error) {
       console.error('Failed to send message:', error)
       // Update message status to failed
-      setMessages((prev) => ({
-        ...prev,
-        [activeContact.id]: prev[activeContact.id].map((msg) =>
-          msg.id === messageId ? { ...msg, status: "failed" } : msg,
-        ),
-      }))
+      setMessages((prev) => {
+        const updatedMessages = {
+          ...prev,
+          [activeContact.id]: prev[activeContact.id].map((msg) =>
+            msg.id === messageId ? { ...msg, status: "failed" as const } : msg,
+          ),
+        }
+        localStorage.setItem('lockbox-messages', JSON.stringify(updatedMessages))
+        return updatedMessages
+      })
     }
   }
 

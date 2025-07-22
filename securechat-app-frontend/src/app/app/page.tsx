@@ -71,6 +71,8 @@ export default function SecureChatApp() {
     localStorage.removeItem('lockbox-token')
     localStorage.removeItem('lockbox-user')
     localStorage.removeItem('lockbox-user-id')
+    localStorage.removeItem('lockbox-contacts')
+    localStorage.removeItem('lockbox-messages')
     setUser(null)
     setIsAuthenticated(false)
   }
