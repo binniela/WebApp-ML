@@ -68,6 +68,8 @@ async def send_message(message_data: dict, current_user = Depends(get_current_us
         
         # Store encrypted message
         message_id = str(uuid.uuid4())
+        print(f"Attempting to store message: {message_id} from {current_user['id']} to {message_data['recipient_id']}")
+        
         result = db.insert("messages", {
             "id": message_id,
             "conversation_id": conversation_id,
@@ -77,6 +79,12 @@ async def send_message(message_data: dict, current_user = Depends(get_current_us
             "signature": message_data["signature"],
             "sender_public_key": message_data["sender_public_key"]
         })
+        
+        if not result:
+            print("ERROR: Message insert failed - no result returned")
+            raise HTTPException(status_code=500, detail="Failed to store message")
+        
+        print(f"Message stored successfully: {result}")
         
         # Notify WebSocket service to broadcast message
         try:
@@ -212,23 +220,54 @@ async def send_chat_request(request_data: dict, current_user = Depends(get_curre
         if not recipient:
             raise HTTPException(status_code=404, detail="Recipient not found")
         
-        # Check if request already exists
-        existing = db.fetchone("chat_requests", {
+        # Check if request already exists (check both directions and all statuses)
+        existing_sent = db.fetchone("chat_requests", {
             "from_user_id": current_user['id'],
-            "to_user_id": request_data["recipient_id"],
-            "status": "pending"
+            "to_user_id": request_data["recipient_id"]
         })
         
-        if existing:
+        existing_received = db.fetchone("chat_requests", {
+            "from_user_id": request_data["recipient_id"],
+            "to_user_id": current_user['id']
+        })
+        
+        # Check if there's already an active conversation
+        existing_conv1 = db.fetchone("conversations", {
+            "participant1_id": current_user['id'],
+            "participant2_id": request_data["recipient_id"]
+        })
+        
+        existing_conv2 = db.fetchone("conversations", {
+            "participant1_id": request_data["recipient_id"],
+            "participant2_id": current_user['id']
+        })
+        
+        if existing_sent and existing_sent.get('status') == 'pending':
             raise HTTPException(status_code=400, detail="Chat request already sent")
         
+        if existing_received and existing_received.get('status') == 'pending':
+            raise HTTPException(status_code=400, detail="You have a pending request from this user")
+            
+        if existing_conv1 or existing_conv2:
+            raise HTTPException(status_code=400, detail="Conversation already exists")
+        
+        print(f"Creating chat request from {current_user['id']} to {request_data['recipient_id']}")
+        
         # Create chat request in Supabase
-        chat_request = db.insert("chat_requests", {
+        chat_request_data = {
             "from_user_id": current_user['id'],
             "to_user_id": request_data["recipient_id"],
             "message": request_data.get("message", "Hi! I'd like to start a secure conversation with you."),
             "status": "pending"
-        })
+        }
+        
+        chat_request = db.insert("chat_requests", chat_request_data)
+        
+        if not chat_request:
+            print("ERROR: Chat request insert failed")
+            raise HTTPException(status_code=500, detail="Failed to create chat request")
+        
+        print(f"Chat request created successfully: {chat_request}")
         
         # Notify recipient via WebSocket
         try:
@@ -246,7 +285,7 @@ async def send_chat_request(request_data: dict, current_user = Depends(get_curre
         except requests.RequestException:
             print("WebSocket notification failed - request stored but not notified")
         
-        return {"message": "Chat request sent successfully", "request_id": chat_request['id']}
+        return {"message": "Chat request sent successfully", "request_id": chat_request.get('id', 'unknown')}
         
     except HTTPException:
         raise

@@ -63,9 +63,12 @@ class Database:
                 for key, value in filters.items():
                     query = query.eq(key, value)
             result = query.limit(1).execute()
-            return result.data[0] if result.data else None
+            found = result.data[0] if result.data else None
+            if filters:
+                print(f"fetchone {table} with {filters}: {'found' if found else 'not found'}")
+            return found
         except Exception as e:
-            print(f"Database fetchone error: {e}")
+            print(f"Database fetchone error for {table}: {e}")
             return None
     
     def fetchall(self, table: str, filters: dict = None):
@@ -82,10 +85,16 @@ class Database:
     
     def insert(self, table: str, data: dict):
         try:
+            print(f"Inserting into {table}: {data}")
             result = self.client.table(table).insert(data).execute()
-            return result.data[0] if result.data else None
+            print(f"Insert result: {result.data}")
+            if not result.data:
+                print(f"WARNING: No data returned from insert to {table}")
+                return None
+            return result.data[0]
         except Exception as e:
-            print(f"Database insert error: {e}")
+            print(f"Database insert error for {table}: {e}")
+            print(f"Data attempted: {data}")
             raise
     
     def update(self, table: str, data: dict, filters: dict):

@@ -679,11 +679,19 @@ export default function MessagingApp({ user, onLogout }: MessagingAppProps) {
           const updatedMessages = {
             ...prev,
             [activeContact.id]: (prev[activeContact.id] || []).map((msg) =>
-              msg.id === messageId ? { ...msg, status: "sent" as const, id: result.id || result.message_id || msg.id } : msg,
+              msg.id === messageId ? { 
+                ...msg, 
+                status: "sent" as const, 
+                id: result.id || result.message_id || msg.id 
+              } : msg,
             ),
           }
           // Persist to localStorage
-          localStorage.setItem('lockbox-messages', JSON.stringify(updatedMessages))
+          try {
+            localStorage.setItem('lockbox-messages', JSON.stringify(updatedMessages))
+          } catch (e) {
+            console.warn('localStorage save failed:', e)
+          }
           return updatedMessages
         })
 
@@ -701,25 +709,38 @@ export default function MessagingApp({ user, onLogout }: MessagingAppProps) {
           })
         }, 1000)
       } else {
-        // Update message status to failed
-        setMessages((prev) => ({
-          ...prev,
-          [activeContact.id]: (prev[activeContact.id] || []).map((msg) =>
-            msg.id === messageId ? { ...msg, status: "failed" } : msg,
-          ),
-        }))
+        console.error('Message send failed:', response.status, await response.text())
+        // Update message status to failed but keep the message
+        setMessages((prev) => {
+          const updatedMessages = {
+            ...prev,
+            [activeContact.id]: (prev[activeContact.id] || []).map((msg) =>
+              msg.id === messageId ? { ...msg, status: "failed" as const } : msg,
+            ),
+          }
+          try {
+            localStorage.setItem('lockbox-messages', JSON.stringify(updatedMessages))
+          } catch (e) {
+            console.warn('localStorage save failed:', e)
+          }
+          return updatedMessages
+        })
       }
     } catch (error) {
       console.error('Failed to send message:', error)
-      // Update message status to failed
+      // Update message status to failed but keep the message
       setMessages((prev) => {
         const updatedMessages = {
           ...prev,
-          [activeContact.id]: prev[activeContact.id].map((msg) =>
+          [activeContact.id]: (prev[activeContact.id] || []).map((msg) =>
             msg.id === messageId ? { ...msg, status: "failed" as const } : msg,
           ),
         }
-        localStorage.setItem('lockbox-messages', JSON.stringify(updatedMessages))
+        try {
+          localStorage.setItem('lockbox-messages', JSON.stringify(updatedMessages))
+        } catch (e) {
+          console.warn('localStorage save failed:', e)
+        }
         return updatedMessages
       })
     }
