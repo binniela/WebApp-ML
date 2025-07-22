@@ -9,10 +9,24 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Path is required' }, { status: 400 })
     }
 
-    const targetUrl = `http://52.53.221.141${path}`
+    // Route to appropriate microservice
+    let targetUrl
+    if (path.startsWith('/auth/')) {
+      targetUrl = `http://52.53.221.141:8001${path.replace('/auth', '')}`
+    } else if (path.startsWith('/messages') || path.startsWith('/chat-requests')) {
+      targetUrl = `http://52.53.221.141:8002${path}`
+    } else if (path.startsWith('/users/search')) {
+      targetUrl = `http://52.53.221.141:8001${path}`
+    } else {
+      targetUrl = `http://52.53.221.141${path}`
+    }
     
-    const getEndpoints = ['/contacts', '/contacts/pending', '/messages', '/messages/conversation/', '/users/search']
+    console.log(`Routing ${path} to ${targetUrl}`)
+    
+    const getEndpoints = ['/contacts', '/contacts/pending', '/messages', '/messages/conversation/', '/users/search', '/chat-requests/incoming']
     const method = getEndpoints.some(endpoint => path === endpoint || path.startsWith(endpoint)) ? 'GET' : 'POST'
+    
+    console.log(`Using method ${method} for path ${path}`)
     
     const response = await fetch(targetUrl, {
       method,
@@ -43,7 +57,20 @@ export async function GET(request: NextRequest) {
       return NextResponse.json({ error: 'Path is required' }, { status: 400 })
     }
 
-    let targetUrl = `http://52.53.221.141${path}`
+    // Route to appropriate microservice for GET requests
+    let targetUrl
+    if (path.startsWith('/auth/')) {
+      targetUrl = `http://52.53.221.141:8001${path.replace('/auth', '')}`
+    } else if (path.startsWith('/messages') || path.startsWith('/chat-requests')) {
+      targetUrl = `http://52.53.221.141:8002${path}`
+    } else if (path.startsWith('/users/search')) {
+      targetUrl = `http://52.53.221.141:8001${path}`
+    } else {
+      targetUrl = `http://52.53.221.141${path}`
+    }
+    
+    console.log(`GET routing ${path} to ${targetUrl}`)
+    
     if (q) targetUrl += `?q=${encodeURIComponent(q)}`
     
     const response = await fetch(targetUrl, {
