@@ -357,9 +357,12 @@ export default function MessagingApp({ user, onLogout }: MessagingAppProps) {
                 if (encryptedData.encryptedMessage && encryptedData.algorithm) {
                   try {
                     const cryptoManager = CryptoManager.getInstance()
+                    console.log('Attempting decryption for message from:', msg.sender_username)
+                    console.log('Sender public key:', msg.sender_public_key?.substring(0, 50) + '...')
                     decryptedContent = cryptoManager.decryptMessage(msg.encrypted_blob, msg.signature, msg.sender_public_key)
+                    console.log('Decryption successful')
                   } catch (decryptError) {
-                    console.warn('Decryption failed:', decryptError)
+                    console.warn('Decryption failed for message from', msg.sender_username, ':', (decryptError as Error).message)
                     decryptedContent = `🔒 Unable to decrypt message`
                   }
                 } else {
