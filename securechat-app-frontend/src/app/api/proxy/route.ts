@@ -68,13 +68,26 @@ export async function POST(request: NextRequest) {
         })
       },
       body: actualMethod === 'POST' ? JSON.stringify(requestBody) : undefined,
+      signal: AbortSignal.timeout(5000) // 5 second timeout
     })
 
     const data = await response.json()
     return NextResponse.json(data, { status: response.status })
-  } catch (error) {
+  } catch (error: any) {
     console.error('Proxy error:', error)
-    return NextResponse.json({ error: 'Proxy failed' }, { status: 500 })
+    
+    // Handle specific timeout errors
+    if (error.name === 'TimeoutError' || error.code === 'UND_ERR_CONNECT_TIMEOUT') {
+      return NextResponse.json({ 
+        error: 'Backend service unavailable', 
+        detail: 'Connection timeout - please try again' 
+      }, { status: 503 })
+    }
+    
+    return NextResponse.json({ 
+      error: 'Proxy failed', 
+      detail: error.message || 'Unknown error' 
+    }, { status: 500 })
   }
 }
 
@@ -102,12 +115,25 @@ export async function GET(request: NextRequest) {
           'Authorization': request.headers.get('authorization')! 
         })
       },
+      signal: AbortSignal.timeout(5000) // 5 second timeout
     })
 
     const data = await response.json()
     return NextResponse.json(data, { status: response.status })
-  } catch (error) {
+  } catch (error: any) {
     console.error('Proxy GET error:', error)
-    return NextResponse.json({ error: 'Proxy failed' }, { status: 500 })
+    
+    // Handle specific timeout errors
+    if (error.name === 'TimeoutError' || error.code === 'UND_ERR_CONNECT_TIMEOUT') {
+      return NextResponse.json({ 
+        error: 'Backend service unavailable', 
+        detail: 'Connection timeout - please try again' 
+      }, { status: 503 })
+    }
+    
+    return NextResponse.json({ 
+      error: 'Proxy failed', 
+      detail: error.message || 'Unknown error' 
+    }, { status: 500 })
   }
 }
