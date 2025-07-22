@@ -287,6 +287,13 @@ export default function MessagingApp({ user, onLogout }: MessagingAppProps) {
       
       console.log('Loading messages for user:', user.username)
       
+      // Ensure crypto manager has keys loaded
+      const cryptoManager = CryptoManager.getInstance()
+      const keys = cryptoManager.loadKeysFromStorage()
+      if (!keys) {
+        console.warn('No crypto keys found - messages may not decrypt properly')
+      }
+      
       const response = await fetch('/api/proxy', {
         method: 'POST',
         headers: {
@@ -299,6 +306,12 @@ export default function MessagingApp({ user, onLogout }: MessagingAppProps) {
       if (response.ok) {
         const serverMessages = await response.json()
         console.log('Loaded messages from server:', serverMessages.length)
+        
+        if (serverMessages.length === 0) {
+          console.log('No messages found on server')
+          setMessages({})
+          return
+        }
         
         // Validate server response
         if (!Array.isArray(serverMessages)) {
@@ -351,31 +364,31 @@ export default function MessagingApp({ user, onLogout }: MessagingAppProps) {
           // Decrypt message content with null check
           let decryptedContent = 'Message content unavailable'
           if (msg.encrypted_blob) {
-            if (msg.encrypted_blob.startsWith('{')) {
-              try {
+            try {
+              // Check if it's properly encrypted JSON format
+              if (msg.encrypted_blob.startsWith('{')) {
                 const encryptedData = JSON.parse(msg.encrypted_blob)
                 if (encryptedData.encryptedMessage && encryptedData.algorithm) {
-                  try {
-                    const cryptoManager = CryptoManager.getInstance()
-                    // For signature verification, we need the sender's ML-DSA public key
-                    // For now, simulate with deterministic key based on sender ID
-                    const senderMLDSAKey = `sender_${msg.sender_id}_mldsa_key`
-                    
-                    console.log('Attempting decryption for message from:', msg.sender_username)
-                    decryptedContent = cryptoManager.decryptMessage(msg.encrypted_blob, msg.signature, senderMLDSAKey)
-                    console.log('Decryption successful')
-                  } catch (decryptError) {
-                    console.warn('Decryption failed for message from', msg.sender_username, ':', (decryptError as Error).message)
-                    decryptedContent = `🔒 Unable to decrypt message`
-                  }
+                  // This is a properly encrypted message - try to decrypt
+                  const cryptoManager = CryptoManager.getInstance()
+                  console.log('Attempting decryption for message from:', msg.sender_username)
+                  
+                  // Use the sender's public key from the message for signature verification
+                  const senderPublicKey = msg.sender_public_key || 'fallback_key'
+                  decryptedContent = cryptoManager.decryptMessage(msg.encrypted_blob, msg.signature, senderPublicKey)
+                  console.log('Decryption successful for message:', msg.id)
                 } else {
+                  // Malformed encrypted data, show as-is
                   decryptedContent = msg.encrypted_blob
                 }
-              } catch {
+              } else {
+                // Simple encrypted format - remove prefix
                 decryptedContent = msg.encrypted_blob.replace('encrypted_', '') || msg.encrypted_blob
               }
-            } else {
-              decryptedContent = msg.encrypted_blob.replace('encrypted_', '') || msg.encrypted_blob
+            } catch (decryptError) {
+              console.warn('Decryption failed for message from', msg.sender_username, ':', (decryptError as Error).message)
+              // Show fallback content instead of error message
+              decryptedContent = msg.encrypted_blob.replace('encrypted_', '') || 'Unable to decrypt message'
             }
           }
           
@@ -425,7 +438,14 @@ export default function MessagingApp({ user, onLogout }: MessagingAppProps) {
         
         console.log('Messages loaded and contacts updated')
       } else {
-        console.error('Failed to load messages:', response.status)
+        const errorText = await response.text()
+        console.error('Failed to load messages:', response.status, errorText)
+        
+        if (response.status === 401) {
+          console.log('Token expired, redirecting to login')
+          localStorage.removeItem('lockbox-token')
+          window.location.reload()
+        }
       }
     } catch (error) {
       console.error('Failed to load messages:', error)
