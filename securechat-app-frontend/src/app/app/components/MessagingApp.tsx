@@ -655,7 +655,7 @@ export default function MessagingApp({ user, onLogout }: MessagingAppProps) {
     const messageId = Date.now().toString()
     const newMessage: Message = {
       id: messageId,
-      content: content.trim(),
+      content: content.trim(), // Store plain text for display
       sender: user?.username || "You",
       timestamp: new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
       isOwn: true,
@@ -737,7 +737,8 @@ export default function MessagingApp({ user, onLogout }: MessagingAppProps) {
               msg.id === messageId ? { 
                 ...msg, 
                 status: "sent" as const, 
-                id: result.id || result.message_id || msg.id 
+                id: result.id || result.message_id || msg.id,
+                content: content.trim() // Ensure plain text is preserved
               } : msg,
             ),
           }
