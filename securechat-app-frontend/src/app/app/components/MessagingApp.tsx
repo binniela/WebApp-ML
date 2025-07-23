@@ -116,15 +116,27 @@ export default function MessagingApp({ user, onLogout }: MessagingAppProps) {
         }
         
         // Handle incoming WebSocket messages
-        wsManager.onMessage((message) => {
+        wsManager.onMessage(async (message) => {
             try {
               if (message && message.type === 'new_message' && message.data) {
-                // Ensure we show plain text content, not encrypted blob
-                let displayContent = message.data.content || 'Message content unavailable'
+                // Decrypt message content locally - server should never send plain text
+                let displayContent = 'Decrypting message...'
                 
-                // If content looks like encrypted JSON, try to extract or use fallback
-                if (displayContent.startsWith('{') && displayContent.includes('encryptedMessage')) {
-                  displayContent = 'New message received' // Fallback for encrypted content
+                try {
+                  const cryptoManager = CryptoManager.getInstance()
+                  const encryptedBlob = message.data.encrypted_blob || message.data.content
+                  
+                  if (encryptedBlob && encryptedBlob.startsWith('{')) {
+                    // Properly encrypted message - decrypt it
+                    const senderPublicKey = message.data.sender_public_key || 'fallback_key'
+                    displayContent = cryptoManager.decryptMessage(encryptedBlob, message.data.signature, senderPublicKey)
+                  } else {
+                    // Fallback for simple encrypted format
+                    displayContent = encryptedBlob?.replace('encrypted_', '') || 'Message content'
+                  }
+                } catch (decryptError) {
+                  console.warn('Failed to decrypt incoming message:', decryptError)
+                  displayContent = 'Unable to decrypt message'
                 }
                 
                 const newMessage = {
@@ -727,8 +739,8 @@ export default function MessagingApp({ user, onLogout }: MessagingAppProps) {
           recipient_id: activeContact.id,
           encrypted_blob: encryptedBlob,
           signature: signature,
-          sender_public_key: user?.publicKey || 'temp_key',
-          plain_content: content.trim() // Send plain text for WebSocket
+          sender_public_key: user?.publicKey || 'temp_key'
+          // NO plain_content - server should never see plain text
         })
       })
 
@@ -736,7 +748,7 @@ export default function MessagingApp({ user, onLogout }: MessagingAppProps) {
         const result = await response.json()
         console.log('Message sent successfully:', result)
         
-        // Update message status to sent - PRESERVE PLAIN TEXT CONTENT
+        // Update message status to sent - content already set correctly
         setMessages((prev) => {
           const updatedMessages = {
             ...prev,
@@ -744,8 +756,8 @@ export default function MessagingApp({ user, onLogout }: MessagingAppProps) {
               msg.id === messageId ? { 
                 ...msg, 
                 status: "sent" as const, 
-                id: result.id || result.message_id || msg.id,
-                content: content.trim() // FORCE plain text content
+                id: result.id || result.message_id || msg.id
+                // Don't modify content - it's already plain text from initial message creation
               } : msg,
             ),
           }
