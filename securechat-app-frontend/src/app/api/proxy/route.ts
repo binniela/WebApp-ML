@@ -25,7 +25,7 @@ function getTargetUrl(path: string): { url: string, method: string } {
   if (ENDPOINT_MAPPING[path]) {
     const mapping = ENDPOINT_MAPPING[path]
     return {
-      url: `http://52.53.221.141:${mapping.service}${mapping.endpoint}`,
+      url: `http://52.53.221.141${mapping.endpoint}`,
       method: mapping.method
     }
   }
@@ -34,7 +34,7 @@ function getTargetUrl(path: string): { url: string, method: string } {
   if (path.startsWith('/messages/conversation/')) {
     const contactId = path.split('/')[3]
     return {
-      url: `http://52.53.221.141:8002/conversation/${contactId}`,
+      url: `http://52.53.221.141/conversation/${contactId}`,
       method: 'GET'
     }
   }
@@ -42,7 +42,7 @@ function getTargetUrl(path: string): { url: string, method: string } {
   if (path.startsWith('/keys/public/')) {
     const userId = path.split('/')[3]
     return {
-      url: `http://52.53.221.141:8002/keys/public/${userId}`,
+      url: `http://52.53.221.141/keys/public/${userId}`,
       method: 'GET'
     }
   }
