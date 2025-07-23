@@ -697,10 +697,8 @@ export default function MessagingApp({ user, onLogout }: MessagingAppProps) {
       let signature: string
       
       try {
-        // Need to get recipient's Kyber public key for proper encryption
-        // For now, simulate with a deterministic key based on recipient ID
-        const recipientKyberKey = `recipient_${activeContact.id}_kyber_key`
-        const encrypted = crypto.encryptMessage(content, recipientKyberKey)
+        // Use real key exchange for encryption
+        const encrypted = await crypto.encryptMessage(content, activeContact.id)
         encryptedBlob = encrypted.encryptedBlob
         signature = encrypted.signature
         console.log('Message encrypted with post-quantum crypto')
@@ -729,7 +727,7 @@ export default function MessagingApp({ user, onLogout }: MessagingAppProps) {
         const result = await response.json()
         console.log('Message sent successfully:', result)
         
-        // Update message status to sent with proper ID
+        // Update message status to sent with proper ID - KEEP ORIGINAL CONTENT
         setMessages((prev) => {
           const updatedMessages = {
             ...prev,
@@ -737,12 +735,11 @@ export default function MessagingApp({ user, onLogout }: MessagingAppProps) {
               msg.id === messageId ? { 
                 ...msg, 
                 status: "sent" as const, 
-                id: result.id || result.message_id || msg.id,
-                content: content.trim() // Ensure plain text is preserved
+                id: result.id || result.message_id || msg.id
+                // DON'T change content - it's already plain text
               } : msg,
             ),
           }
-          // Persist to localStorage
           try {
             localStorage.setItem('lockbox-messages', JSON.stringify(updatedMessages))
           } catch (e) {

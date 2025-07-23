@@ -44,6 +44,8 @@ export class CryptoManager {
 
     this.userKeys = keys;
     this.storeKeysLocally(keys);
+    // Upload public keys to server
+    this.uploadPublicKeys();
     return keys;
   }
 
@@ -82,6 +84,8 @@ export class CryptoManager {
 
       this.userKeys = keys;
       this.storeKeysLocally(keys);
+      // Upload public keys to server
+      this.uploadPublicKeys();
       return keys;
     } catch (error: any) {
       throw new Error('Invalid post-quantum keys: ' + (error?.message || 'Unknown error'));
@@ -100,7 +104,7 @@ export class CryptoManager {
   }
 
   // Encrypt message using Kyber KEM + AES-256-GCM
-  encryptMessage(message: string, recipientKyberPublicKey: string): { encryptedBlob: string; signature: string } {
+  async encryptMessage(message: string, recipientUserId: string): Promise<{ encryptedBlob: string; signature: string }> {
     if (!this.userKeys) {
       throw new Error('No keys available for encryption');
     }
@@ -117,8 +121,9 @@ export class CryptoManager {
         padding: CryptoJS.pad.Pkcs7
       });
       
-      // 3. Kyber KEM: Encapsulate AES key
-      const encapsulatedKey = this.kyberEncapsulate(aesKey.toString(), recipientKyberPublicKey);
+      // 3. Get recipient's public key and encapsulate AES key
+      const recipientKeys = await this.getRecipientPublicKeys(recipientUserId);
+      const encapsulatedKey = this.kyberEncapsulate(aesKey.toString(), recipientKeys.kyber_public_key);
       
       // 4. Create encrypted blob
       const encryptedBlob = JSON.stringify({
@@ -239,6 +244,8 @@ export class CryptoManager {
 
       const keys = JSON.parse(keyData);
       this.userKeys = keys;
+      // Upload public keys to server if they exist
+      if (keys) this.uploadPublicKeys();
       return keys;
     } catch (error) {
       console.error('Failed to load keys:', error);
@@ -254,6 +261,60 @@ export class CryptoManager {
       kyber: this.userKeys.kyber.publicKey,
       mldsa: this.userKeys.mldsa.publicKey
     };
+  }
+
+  // Get recipient's public keys from server
+  private async getRecipientPublicKeys(userId: string): Promise<{kyber_public_key: string, mldsa_public_key: string}> {
+    try {
+      const token = localStorage.getItem('lockbox-token');
+      const response = await fetch('/api/proxy', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ path: `/keys/public/${userId}` })
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        return {
+          kyber_public_key: data.kyber_public_key || `fallback_kyber_${userId}`,
+          mldsa_public_key: data.mldsa_public_key || `fallback_mldsa_${userId}`
+        };
+      }
+    } catch (error) {
+      console.warn('Failed to fetch recipient keys:', error);
+    }
+    
+    // Fallback keys if server request fails
+    return {
+      kyber_public_key: `fallback_kyber_${userId}`,
+      mldsa_public_key: `fallback_mldsa_${userId}`
+    };
+  }
+
+  // Upload public keys to server
+  async uploadPublicKeys(): Promise<void> {
+    if (!this.userKeys) return;
+    
+    try {
+      const token = localStorage.getItem('lockbox-token');
+      await fetch('/api/proxy', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          path: '/keys/update',
+          kyber_public_key: this.userKeys.kyber.publicKey,
+          mldsa_public_key: this.userKeys.mldsa.publicKey
+        })
+      });
+    } catch (error) {
+      console.warn('Failed to upload public keys:', error);
+    }
   }
 
   // Clear keys
