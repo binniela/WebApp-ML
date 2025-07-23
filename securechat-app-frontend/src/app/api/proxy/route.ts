@@ -15,6 +15,9 @@ const ENDPOINT_MAPPING: Record<string, { service: number, endpoint: string, meth
   '/chat-requests/send': { service: 8002, endpoint: '/chat-requests/send', method: 'POST' },
   '/chat-requests/incoming': { service: 8002, endpoint: '/chat-requests/incoming', method: 'GET' },
   '/chat-requests/respond': { service: 8002, endpoint: '/chat-requests/respond', method: 'POST' },
+  
+  // Key Exchange (port 8002)
+  '/keys/update': { service: 8002, endpoint: '/keys/update', method: 'POST' },
 }
 
 function getTargetUrl(path: string): { url: string, method: string } {
@@ -32,6 +35,14 @@ function getTargetUrl(path: string): { url: string, method: string } {
     const contactId = path.split('/')[3]
     return {
       url: `http://52.53.221.141:8002/conversation/${contactId}`,
+      method: 'GET'
+    }
+  }
+  
+  if (path.startsWith('/keys/public/')) {
+    const userId = path.split('/')[3]
+    return {
+      url: `http://52.53.221.141:8002/keys/public/${userId}`,
       method: 'GET'
     }
   }
@@ -71,6 +82,17 @@ export async function POST(request: NextRequest) {
       signal: AbortSignal.timeout(5000) // 5 second timeout
     })
 
+    // Check if response is JSON or HTML
+    const contentType = response.headers.get('content-type')
+    if (contentType?.includes('text/html')) {
+      const htmlText = await response.text()
+      console.error('Backend returned HTML:', htmlText.substring(0, 200))
+      return NextResponse.json({ 
+        error: 'Backend service error', 
+        detail: 'Service returned HTML instead of JSON - check backend logs' 
+      }, { status: 502 })
+    }
+    
     const data = await response.json()
     return NextResponse.json(data, { status: response.status })
   } catch (error: any) {
