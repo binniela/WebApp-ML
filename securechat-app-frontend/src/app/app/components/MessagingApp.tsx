@@ -119,9 +119,17 @@ export default function MessagingApp({ user, onLogout }: MessagingAppProps) {
         wsManager.onMessage((message) => {
             try {
               if (message && message.type === 'new_message' && message.data) {
+                // Ensure we show plain text content, not encrypted blob
+                let displayContent = message.data.content || 'Message content unavailable'
+                
+                // If content looks like encrypted JSON, try to extract or use fallback
+                if (displayContent.startsWith('{') && displayContent.includes('encryptedMessage')) {
+                  displayContent = 'New message received' // Fallback for encrypted content
+                }
+                
                 const newMessage = {
                   id: message.data.id || Date.now().toString(),
-                  content: message.data.content || 'Message content unavailable',
+                  content: displayContent,
                   sender: message.data.sender || 'Unknown',
                   timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
                   isOwn: false,
@@ -692,7 +700,7 @@ export default function MessagingApp({ user, onLogout }: MessagingAppProps) {
       const token = localStorage.getItem('lockbox-token')
       const crypto = CryptoManager.getInstance()
       
-      // Use post-quantum encryption
+      // Use post-quantum encryption for server storage only
       let encryptedBlob: string
       let signature: string
       
@@ -719,7 +727,8 @@ export default function MessagingApp({ user, onLogout }: MessagingAppProps) {
           recipient_id: activeContact.id,
           encrypted_blob: encryptedBlob,
           signature: signature,
-          sender_public_key: user?.publicKey || 'temp_key'
+          sender_public_key: user?.publicKey || 'temp_key',
+          plain_content: content.trim() // Send plain text for WebSocket
         })
       })
 
@@ -727,7 +736,7 @@ export default function MessagingApp({ user, onLogout }: MessagingAppProps) {
         const result = await response.json()
         console.log('Message sent successfully:', result)
         
-        // Update message status to sent with proper ID - KEEP ORIGINAL CONTENT
+        // Update message status to sent - PRESERVE PLAIN TEXT CONTENT
         setMessages((prev) => {
           const updatedMessages = {
             ...prev,
@@ -735,8 +744,8 @@ export default function MessagingApp({ user, onLogout }: MessagingAppProps) {
               msg.id === messageId ? { 
                 ...msg, 
                 status: "sent" as const, 
-                id: result.id || result.message_id || msg.id
-                // DON'T change content - it's already plain text
+                id: result.id || result.message_id || msg.id,
+                content: content.trim() // FORCE plain text content
               } : msg,
             ),
           }
