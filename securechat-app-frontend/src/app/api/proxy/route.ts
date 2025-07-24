@@ -25,7 +25,7 @@ function getTargetUrl(path: string): { url: string, method: string } {
   if (ENDPOINT_MAPPING[path]) {
     const mapping = ENDPOINT_MAPPING[path]
     return {
-      url: `http://52.53.221.141:8000${path}`,
+      url: `http://52.53.221.141:8000${mapping.endpoint}`,
       method: mapping.method
     }
   }
