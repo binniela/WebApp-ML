@@ -97,6 +97,11 @@ export async function POST(request: NextRequest) {
     return NextResponse.json(data, { status: response.status })
   } catch (error: any) {
     console.error('Proxy error:', error)
+    console.error('Error details:', {
+      name: error.name,
+      message: error.message,
+      stack: error.stack?.substring(0, 200)
+    })
     
     // Handle specific timeout errors
     if (error.name === 'TimeoutError' || error.code === 'UND_ERR_CONNECT_TIMEOUT') {
@@ -108,7 +113,8 @@ export async function POST(request: NextRequest) {
     
     return NextResponse.json({ 
       error: 'Proxy failed', 
-      detail: error.message || 'Unknown error' 
+      detail: error.message || 'Unknown error',
+      errorType: error.name || 'UnknownError'
     }, { status: 500 })
   }
 }
