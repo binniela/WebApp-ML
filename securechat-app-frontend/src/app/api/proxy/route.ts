@@ -21,35 +21,9 @@ const ENDPOINT_MAPPING: Record<string, { service: number, endpoint: string, meth
 }
 
 function getTargetUrl(path: string): { url: string, method: string } {
-  // Check exact matches first
-  if (ENDPOINT_MAPPING[path]) {
-    const mapping = ENDPOINT_MAPPING[path]
-    return {
-      url: `http://52.53.221.141:8000${mapping.endpoint}`,
-      method: mapping.method
-    }
-  }
-  
-  // Handle dynamic paths
-  if (path.startsWith('/messages/conversation/')) {
-    const contactId = path.split('/')[3]
-    return {
-      url: `http://52.53.221.141:8000${path}`,
-      method: 'GET'
-    }
-  }
-  
-  if (path.startsWith('/keys/public/')) {
-    const userId = path.split('/')[3]
-    return {
-      url: `http://52.53.221.141:8000${path}`,
-      method: 'GET'
-    }
-  }
-  
-  // Default fallback
+  // Direct connection to monolithic backend
   return {
-    url: `http://52.53.221.141${path}`,
+    url: `http://52.53.221.141:8000${path}`,
     method: 'POST'
   }
 }
