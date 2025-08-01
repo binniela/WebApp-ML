@@ -57,8 +57,11 @@ export default function NewChatModal({ onClose, onStartChat, darkMode }: NewChat
         console.log('Search response status:', response.status)
         
         if (response.ok) {
-          const users = await response.json()
-          console.log('Raw search results:', users)
+          const data = await response.json()
+          console.log('Raw search results:', data)
+          
+          // Extract users array from response
+          const users = data.users || data || []
           
           // Ensure users is an array and filter out any invalid entries with comprehensive validation
           const validUsers = Array.isArray(users) ? users.filter(user => {
