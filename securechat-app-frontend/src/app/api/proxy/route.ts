@@ -22,9 +22,10 @@ const ENDPOINT_MAPPING: Record<string, { service: number, endpoint: string, meth
 
 function getTargetUrl(path: string): { url: string, method: string } {
   // Direct connection to monolithic backend
+  const method = path.includes('/search') || path.includes('/incoming') ? 'GET' : 'POST'
   return {
     url: `http://52.53.221.141:8000${path}`,
-    method: 'POST'
+    method: method
   }
 }
 
@@ -39,8 +40,8 @@ export async function POST(request: NextRequest) {
 
     const { url: targetUrl, method: expectedMethod } = getTargetUrl(path)
     
-    // For GET endpoints called via POST, use GET method
-    const actualMethod = expectedMethod === 'GET' ? 'GET' : 'POST'
+    // Use the correct method based on endpoint
+    const actualMethod = expectedMethod
     
 
     
