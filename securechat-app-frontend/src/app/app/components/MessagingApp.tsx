@@ -494,15 +494,11 @@ export default function MessagingApp({ user, onLogout }: MessagingAppProps) {
         return
       }
       
-      const response = await fetch('/api/proxy', {
-        method: 'POST',
+      const response = await fetch(`/api/proxy?path=/chat-requests/incoming`, {
+        method: 'GET',
         headers: {
-          'Content-Type': 'application/json',
           'Authorization': `Bearer ${token}`
-        },
-        body: JSON.stringify({
-          path: '/chat-requests/incoming'
-        })
+        }
       })
       
       if (response.status === 401) {
