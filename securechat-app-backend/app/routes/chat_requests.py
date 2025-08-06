@@ -1,6 +1,7 @@
 from fastapi import APIRouter, HTTPException, status, Depends, Header
 from app.utils.auth import verify_token
 from app.database import db
+from app.websocket_manager import manager
 import uuid
 from datetime import datetime
 
@@ -51,6 +52,23 @@ async def send_chat_request(request_data: dict, current_user = Depends(get_curre
             "message": message,
             "status": "pending"
         })
+        
+        # Send WebSocket notification to recipient
+        try:
+            await manager.send_to_user(recipient_id, {
+                "type": "notification",
+                "data": {
+                    "type": "chat_request",
+                    "from_user_id": current_user['id'],
+                    "from_username": current_user['username'],
+                    "message": message,
+                    "request_id": request_id
+                }
+            })
+            print(f"WebSocket notification sent to user {recipient_id}")
+        except Exception as ws_error:
+            print(f"WebSocket notification failed: {ws_error}")
+            # Don't fail the request if WebSocket fails
         
         return {
             "message": "Chat request sent successfully",

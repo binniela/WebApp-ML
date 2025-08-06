@@ -98,9 +98,15 @@ export default function MessagingApp({ user, onLogout }: MessagingAppProps) {
         console.error('Error loading from localStorage:', error)
       }
       
+      // Load chat requests first for immediate notification
       await loadChatRequests()
       await loadContacts()
       await loadMessages() // Load all messages on startup
+      
+      // Check for chat requests again after 1 second to catch any missed
+      setTimeout(() => {
+        loadChatRequests()
+      }, 1000)
       
       // Connect WebSocket for real-time messaging
       try {
@@ -189,17 +195,17 @@ export default function MessagingApp({ user, onLogout }: MessagingAppProps) {
     
     loadInitialData()
     
-    // Reduced polling since WebSocket should handle real-time messages
+    // More frequent polling for chat requests to ensure real-time feel
     const interval = setInterval(async () => {
       try {
         await loadChatRequests()
         // Periodically refresh messages to ensure sync
         await loadMessages()
-        console.log('Periodic message refresh completed')
+        console.log('Periodic refresh completed')
       } catch (error) {
         console.error('Polling error:', error)
       }
-    }, 10000) // 10 seconds - less frequent polling
+    }, 3000) // 3 seconds - faster polling for better UX
     
     return () => {
       clearInterval(interval)
@@ -479,13 +485,7 @@ export default function MessagingApp({ user, onLogout }: MessagingAppProps) {
   }
 
   const loadChatRequests = async () => {
-    // Throttle chat request loading
-    const now = Date.now()
-    const lastLoad = localStorage.getItem('last-chat-request-load')
-    if (lastLoad && now - parseInt(lastLoad) < 3000) {
-      return // Skip if loaded within last 3 seconds
-    }
-    localStorage.setItem('last-chat-request-load', now.toString())
+    // Remove throttling for better real-time experience
     
     try {
       const token = localStorage.getItem('lockbox-token')
