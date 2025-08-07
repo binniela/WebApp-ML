@@ -20,12 +20,9 @@ const ENDPOINT_MAPPING: Record<string, { service: number, endpoint: string, meth
   '/keys/update': { service: 8002, endpoint: '/keys/update', method: 'POST' },
 }
 
-function getTargetUrl(path: string): { url: string, method: string } {
-  // Direct connection to monolithic backend
-  const method = path.includes('/search') || path.includes('/incoming') ? 'GET' : 'POST'
+function getTargetUrl(path: string): { url: string } {
   return {
-    url: `http://52.53.221.141:8000${path}`,
-    method: method
+    url: `http://52.53.221.141:8000${path}`
   }
 }
 
@@ -40,19 +37,28 @@ export async function POST(request: NextRequest) {
 
     const { url: targetUrl } = getTargetUrl(path)
     
-    console.log(`POST: Routing ${path} to ${targetUrl}`)
-    console.log('Request body:', JSON.stringify(requestBody, null, 2))
+    // Determine if this should be a GET or POST based on the path and data
+    const isGetRequest = path.includes('/incoming') || path.includes('/search') || 
+                        (path === '/messages' && Object.keys(requestBody).length === 0)
     
-    const response = await fetch(targetUrl, {
-      method: 'POST',
+    const method = isGetRequest ? 'GET' : 'POST'
+    const finalUrl = isGetRequest && requestBody.q ? `${targetUrl}?q=${encodeURIComponent(requestBody.q)}` : targetUrl
+    
+    console.log(`${method}: Routing ${path} to ${finalUrl}`)
+    if (!isGetRequest) {
+      console.log('Request body:', JSON.stringify(requestBody, null, 2))
+    }
+    
+    const response = await fetch(finalUrl, {
+      method,
       headers: {
         'Content-Type': 'application/json',
         ...(request.headers.get('authorization') && { 
           'Authorization': request.headers.get('authorization')! 
         })
       },
-      body: JSON.stringify(requestBody),
-      signal: AbortSignal.timeout(10000) // Increased timeout
+      body: method === 'POST' ? JSON.stringify(requestBody) : undefined,
+      signal: AbortSignal.timeout(10000)
     })
 
     // Check if response is JSON or HTML
