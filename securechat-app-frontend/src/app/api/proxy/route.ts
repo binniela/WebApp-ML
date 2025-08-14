@@ -18,6 +18,7 @@ const ENDPOINT_MAPPING: Record<string, { service: number, endpoint: string, meth
   
   // Key Exchange (port 8002)
   '/keys/update': { service: 8002, endpoint: '/keys/update', method: 'POST' },
+  '/keys/public': { service: 8000, endpoint: '/auth/keys', method: 'GET' },
 }
 
 function getTargetUrl(path: string): { url: string } {
@@ -61,6 +62,11 @@ export async function POST(request: NextRequest) {
     // Handle contact_id parameter for messages endpoint
     if (path.startsWith('/messages') && method === 'GET' && requestBody.contact_id) {
       finalUrl = `${targetUrl}?contact_id=${encodeURIComponent(requestBody.contact_id)}`
+    }
+    // Handle keys/public paths
+    if (path.startsWith('/keys/public/')) {
+      const userId = path.split('/keys/public/')[1]
+      finalUrl = `${targetUrl.replace('/auth/keys', '/auth/keys/' + userId)}`
     }
     
     console.log(`${method}: Routing ${path} to ${finalUrl}`)

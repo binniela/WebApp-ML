@@ -12,9 +12,8 @@ class WebSocketManager {
     this.token = token
     
     try {
-      // Use HTTP for local development, HTTPS for production
-      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:'
-      const wsUrl = `${protocol}//52.53.221.141:8000/ws/${userId}?token=${token}`
+      // Connect directly to the backend WebSocket
+      const wsUrl = `ws://52.53.221.141:8000/ws/${userId}?token=${token}`
       
       console.log('Connecting to WebSocket:', wsUrl)
       
