@@ -148,6 +148,22 @@ async def respond_to_chat_request(response_data: dict, current_user = Depends(ge
             # Create conversation between users
             conversation_id = str(uuid.uuid4())
             
+            # Notify the original sender via WebSocket
+            try:
+                sender = db.fetchone("users", {"id": chat_request['from_user_id']})
+                await manager.send_to_user(sender['username'], {
+                    "type": "chat_accepted",
+                    "data": {
+                        "conversation_id": conversation_id,
+                        "contact_id": current_user['id'],
+                        "contact_username": current_user['username'],
+                        "message": "Chat request accepted"
+                    }
+                })
+                print(f"Chat acceptance notification sent to {sender['username']}")
+            except Exception as ws_error:
+                print(f"WebSocket notification failed: {ws_error}")
+            
             return {
                 "message": "Chat request accepted",
                 "conversation_id": conversation_id,

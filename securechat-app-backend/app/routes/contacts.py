@@ -21,7 +21,7 @@ def get_current_user(authorization: str = Header(None)):
     
     return user
 
-@router.get("/")
+@router.post("/")
 async def get_contacts(current_user = Depends(get_current_user)):
     """Get user's contacts from accepted chat requests"""
     try:
@@ -73,7 +73,7 @@ async def get_contacts(current_user = Depends(get_current_user)):
             detail=f"Failed to get contacts: {str(e)}"
         )
 
-@router.get("/pending")
+@router.post("/pending")
 async def get_pending_contacts(current_user = Depends(get_current_user)):
     """Get pending chat requests sent by user"""
     try:
