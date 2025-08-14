@@ -26,7 +26,7 @@ export async function POST(request: NextRequest) {
     
     // Determine if this should be a GET or POST based on the actual backend API
     const isGetRequest = path.includes('/incoming') || path.includes('/search') || 
-                        path.startsWith('/messages') ||
+                        (path === '/messages' || path === '/messages/') ||
                         path.includes('/public/')
     
     // Special handling for endpoints that need POST method despite being "get" operations
