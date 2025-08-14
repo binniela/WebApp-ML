@@ -514,8 +514,8 @@ export default function MessagingApp({ user, onLogout }: MessagingAppProps) {
         const rawRequests = Array.isArray(data) ? data : (data.requests || [])
         
         // Deduplicate requests by ID to prevent duplicates
-        const uniqueRequests = rawRequests.filter((request, index, self) => 
-          index === self.findIndex(r => r.id === request.id)
+        const uniqueRequests = rawRequests.filter((request: any, index: number, self: any[]) => 
+          index === self.findIndex((r: any) => r.id === request.id)
         )
         
         // Check for new requests
