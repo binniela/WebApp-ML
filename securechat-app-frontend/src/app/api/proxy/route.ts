@@ -83,6 +83,11 @@ export async function POST(request: NextRequest) {
       }, { status: 200 })
     }
     
+    if (path.startsWith('/messages/conversation/')) {
+      console.log('Messages conversation endpoint - returning empty array (no-op for now)')
+      return NextResponse.json([], { status: 200 })
+    }
+    
     const response = await fetch(finalUrl, {
       method,
       headers: {
