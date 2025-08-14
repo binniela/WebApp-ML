@@ -511,13 +511,18 @@ export default function MessagingApp({ user, onLogout }: MessagingAppProps) {
       if (response.ok) {
         const data = await response.json()
         // Handle both direct array and wrapped response formats
-        const requests = Array.isArray(data) ? data : (data.requests || [])
+        const rawRequests = Array.isArray(data) ? data : (data.requests || [])
+        
+        // Deduplicate requests by ID to prevent duplicates
+        const uniqueRequests = rawRequests.filter((request, index, self) => 
+          index === self.findIndex(r => r.id === request.id)
+        )
         
         // Check for new requests
-        const newRequestCount = requests.length
+        const newRequestCount = uniqueRequests.length
         const previousCount = chatRequests.length
         
-        setChatRequests(requests)
+        setChatRequests(uniqueRequests)
         
         // Show notification and modal for new requests
         if (newRequestCount > previousCount && newRequestCount > 0) {
