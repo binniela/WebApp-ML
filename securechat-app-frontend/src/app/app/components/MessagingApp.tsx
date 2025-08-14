@@ -513,10 +513,15 @@ export default function MessagingApp({ user, onLogout }: MessagingAppProps) {
         // Handle both direct array and wrapped response formats
         const rawRequests = Array.isArray(data) ? data : (data.requests || [])
         
-        // Deduplicate requests by ID to prevent duplicates
-        const uniqueRequests = rawRequests.filter((request: any, index: number, self: any[]) => 
-          index === self.findIndex((r: any) => r.id === request.id)
-        )
+        // Get list of already handled requests from localStorage
+        const handledRequests = JSON.parse(localStorage.getItem('lockbox-handled-requests') || '[]')
+        
+        // Filter out already handled requests and deduplicate
+        const uniqueRequests = rawRequests
+          .filter((request: any) => !handledRequests.includes(request.id))
+          .filter((request: any, index: number, self: any[]) => 
+            index === self.findIndex((r: any) => r.id === request.id)
+          )
         
         // Check for new requests
         const newRequestCount = uniqueRequests.length
@@ -611,6 +616,11 @@ export default function MessagingApp({ user, onLogout }: MessagingAppProps) {
 
   const handleAcceptChatRequest = async (request: ChatRequest) => {
     try {
+      // Mark request as handled in localStorage to prevent it from showing again
+      const handledRequests = JSON.parse(localStorage.getItem('lockbox-handled-requests') || '[]')
+      handledRequests.push(request.id)
+      localStorage.setItem('lockbox-handled-requests', JSON.stringify(handledRequests))
+      
       // The ChatRequestModal already handled the backend response
       // Just update local state immediately
       setChatRequests((prev) => prev.filter((r) => r.id !== request.id))
@@ -660,6 +670,11 @@ export default function MessagingApp({ user, onLogout }: MessagingAppProps) {
   }
 
   const handleDeclineChatRequest = (request: ChatRequest) => {
+    // Mark request as handled in localStorage to prevent it from showing again
+    const handledRequests = JSON.parse(localStorage.getItem('lockbox-handled-requests') || '[]')
+    handledRequests.push(request.id)
+    localStorage.setItem('lockbox-handled-requests', JSON.stringify(handledRequests))
+    
     setChatRequests((prev) => prev.filter((r) => r.id !== request.id))
     
     // Check if we need to close the modal
