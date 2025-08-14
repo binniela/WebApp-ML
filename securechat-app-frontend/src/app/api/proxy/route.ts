@@ -1,25 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 
-// Complete endpoint mapping for all services
-const ENDPOINT_MAPPING: Record<string, { service: number, endpoint: string, method: string }> = {
-  // Auth Service (port 8001)
-  '/auth/login': { service: 8001, endpoint: '/login', method: 'POST' },
-  '/auth/register': { service: 8001, endpoint: '/register', method: 'POST' },
-  '/users/search': { service: 8001, endpoint: '/users/search', method: 'GET' },
-  '/contacts': { service: 8001, endpoint: '/contacts/', method: 'GET' },
-  '/contacts/pending': { service: 8001, endpoint: '/contacts/pending', method: 'GET' },
-  
-  // Message Service (port 8002)
-  '/messages/send': { service: 8002, endpoint: '/send', method: 'POST' },
-  '/messages': { service: 8002, endpoint: '/', method: 'GET' },
-  '/chat-requests/send': { service: 8002, endpoint: '/chat-requests/send', method: 'POST' },
-  '/chat-requests/incoming': { service: 8002, endpoint: '/chat-requests/incoming', method: 'GET' },
-  '/chat-requests/respond': { service: 8002, endpoint: '/chat-requests/respond', method: 'POST' },
-  
-  // Key Exchange (port 8002)
-  '/keys/update': { service: 8002, endpoint: '/keys/update', method: 'POST' },
-  '/keys/public': { service: 8000, endpoint: '/auth/keys', method: 'GET' },
-}
+// All routes go to single FastAPI backend on port 8000
 
 function getTargetUrl(path: string): { url: string } {
   // Ensure proper trailing slash for endpoints that need it
@@ -80,52 +61,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: 'Public keys updated successfully' }, { status: 200 })
     }
     
-    if (path === '/chat-requests/respond') {
-      console.log('Chat request respond - handling via database update')
-      
-      // Extract request_id from the request body
-      const requestId = requestBody.request_id
-      const action = requestBody.action
-      
-      if (!requestId || !action) {
-        return NextResponse.json({ error: 'Missing request_id or action' }, { status: 400 })
-      }
-      
-      // Update the chat request status in the database via a direct SQL call
-      try {
-        const updateResponse = await fetch(`${targetUrl.replace('/chat-requests/respond', '')}/chat-requests/update-status`, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            ...(request.headers.get('authorization') && { 
-              'Authorization': request.headers.get('authorization')! 
-            })
-          },
-          body: JSON.stringify({
-            request_id: requestId,
-            status: action === 'accept' ? 'accepted' : 'declined'
-          })
-        })
-        
-        if (updateResponse.ok || updateResponse.status === 404) {
-          // Return success even if backend endpoint doesn't exist
-          return NextResponse.json({ 
-            message: `Chat request ${action}ed`, 
-            status: action === 'accept' ? 'accepted' : 'declined',
-            conversation_id: action === 'accept' ? 'temp-' + Date.now() : undefined
-          }, { status: 200 })
-        }
-      } catch (error) {
-        console.log('Backend update failed, continuing with local response')
-      }
-      
-      // Fallback response
-      return NextResponse.json({ 
-        message: `Chat request ${action}ed`, 
-        status: action === 'accept' ? 'accepted' : 'declined',
-        conversation_id: action === 'accept' ? 'temp-' + Date.now() : undefined
-      }, { status: 200 })
-    }
+    // Remove special handling - let all requests go to backend
     
     if (path.startsWith('/messages/conversation/')) {
       console.log('Messages conversation endpoint - returning empty array (no-op for now)')
