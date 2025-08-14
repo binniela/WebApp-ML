@@ -22,14 +22,13 @@ def get_current_user(authorization: str = Header(None)):
     
     return user
 
-@router.post("/search")
-async def search_users(request: Request, request_data: dict, current_user = Depends(get_current_user)):
+@router.get("/search")
+async def search_users_get(request: Request, q: str = "", current_user = Depends(get_current_user)):
     rate_limiter.check_rate_limit(request, max_requests=20, window_seconds=60)
-    """Search for users by username"""
+    """Search for users by username (GET)"""
     try:
-        q = request_data.get("q", "")
         if len(q) < 2:
-            return []
+            return {"users": []}
         
         # Get all users and filter by username (case-insensitive)
         all_users = db.fetchall("users", {})
@@ -50,7 +49,43 @@ async def search_users(request: Request, request_data: dict, current_user = Depe
                 "created_at": str(user.get('created_at', ''))
             })
         
-        return result
+        return {"users": result}
+        
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"Search failed: {str(e)}"
+        )
+
+@router.post("/search")
+async def search_users(request: Request, request_data: dict, current_user = Depends(get_current_user)):
+    rate_limiter.check_rate_limit(request, max_requests=20, window_seconds=60)
+    """Search for users by username"""
+    try:
+        q = request_data.get("q", "")
+        if len(q) < 2:
+            return {"users": []}
+        
+        # Get all users and filter by username (case-insensitive)
+        all_users = db.fetchall("users", {})
+        matching_users = [
+            user for user in all_users 
+            if q.lower() in user['username'].lower() and user['id'] != current_user['id']
+        ]
+        
+        # Get public keys for matching users
+        result = []
+        for user in matching_users[:10]:  # Limit to 10 results
+            user_keys = db.fetchone("user_keys", {"user_id": user['id']})
+            result.append({
+                "id": user['id'],
+                "username": user['username'],
+                "kyber_public_key": user_keys['kyber_public_key'] if user_keys else None,
+                "mldsa_public_key": user_keys['mldsa_public_key'] if user_keys else None,
+                "created_at": str(user.get('created_at', ''))
+            })
+        
+        return {"users": result}
         
     except Exception as e:
         raise HTTPException(

@@ -111,7 +111,7 @@ async def get_incoming_requests(current_user = Depends(get_current_user)):
                     "created_at": str(request.get('created_at', ''))
                 })
         
-        return result
+        return {"requests": result}
         
     except Exception as e:
         raise HTTPException(
