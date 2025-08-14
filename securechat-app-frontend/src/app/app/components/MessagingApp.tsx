@@ -509,7 +509,10 @@ export default function MessagingApp({ user, onLogout }: MessagingAppProps) {
       }
 
       if (response.ok) {
-        const requests = await response.json()
+        const data = await response.json()
+        // Handle both direct array and wrapped response formats
+        const requests = Array.isArray(data) ? data : (data.requests || [])
+        
         // Check for new requests
         const newRequestCount = requests.length
         const previousCount = chatRequests.length

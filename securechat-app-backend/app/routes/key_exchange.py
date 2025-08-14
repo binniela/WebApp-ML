@@ -1,4 +1,4 @@
-from fastapi import APIRouter, HTTPException, Depends, Header
+from fastapi import APIRouter, HTTPException, Depends, Header, Request
 from app.utils.auth import verify_token
 from app.database import db
 
@@ -38,14 +38,22 @@ async def get_public_keys(user_id: str, current_user = Depends(get_current_user)
         raise HTTPException(status_code=500, detail=f"Failed to get keys: {str(e)}")
 
 @router.post("/update")
-async def update_public_keys(key_data: dict, current_user = Depends(get_current_user)):
+async def update_public_keys(request: dict, current_user = Depends(get_current_user)):
     """Update user's public keys"""
     try:
+        print(f"Updating keys for user {current_user['id']}")
+        print(f"Request data: {list(request.keys())}")
+        
         # Update user keys in database
-        db.update("users", {
-            "kyber_public_key": key_data.get("kyber_public_key"),
-            "mldsa_public_key": key_data.get("mldsa_public_key")
-        }, {"id": current_user["id"]})
+        update_data = {}
+        if "kyber_public_key" in request:
+            update_data["kyber_public_key"] = request["kyber_public_key"]
+        if "mldsa_public_key" in request:
+            update_data["mldsa_public_key"] = request["mldsa_public_key"]
+            
+        if update_data:
+            db.update("users", update_data, {"id": current_user["id"]})
+            print(f"Keys updated successfully for user {current_user['id']}")
         
         return {"message": "Public keys updated successfully"}
     except Exception as e:
