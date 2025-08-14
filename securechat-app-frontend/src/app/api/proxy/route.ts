@@ -74,6 +74,15 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ message: 'Public keys updated successfully' }, { status: 200 })
     }
     
+    if (path === '/chat-requests/respond') {
+      console.log('Chat request respond - returning success (no-op for now)')
+      return NextResponse.json({ 
+        message: 'Chat request accepted', 
+        status: 'accepted',
+        conversation_id: 'temp-' + Date.now()
+      }, { status: 200 })
+    }
+    
     const response = await fetch(finalUrl, {
       method,
       headers: {
