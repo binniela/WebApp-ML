@@ -126,7 +126,7 @@ export default function MessagingApp({ user, onLogout }: MessagingAppProps) {
             try {
               if (message && message.type === 'new_message' && message.data) {
                 // Decrypt message content locally - server should never send plain text
-                let displayContent = 'Decrypting message...'
+                let displayContent = '🔒 Unable to decrypt message'
                 
                 try {
                   const cryptoManager = CryptoManager.getInstance()
@@ -136,13 +136,16 @@ export default function MessagingApp({ user, onLogout }: MessagingAppProps) {
                     // Properly encrypted message - decrypt it
                     const senderPublicKey = message.data.sender_public_key || 'fallback_key'
                     displayContent = cryptoManager.decryptMessage(encryptedBlob, message.data.signature, senderPublicKey)
+                  } else if (encryptedBlob && encryptedBlob.startsWith('encrypted_')) {
+                    // Simple test format - remove prefix
+                    displayContent = encryptedBlob.replace('encrypted_', '')
                   } else {
-                    // Fallback for simple encrypted format
-                    displayContent = encryptedBlob?.replace('encrypted_', '') || 'Message content'
+                    // Unknown format - show error
+                    displayContent = '🔒 Unknown message format'
                   }
                 } catch (decryptError) {
                   console.warn('Failed to decrypt incoming message:', decryptError)
-                  displayContent = 'Unable to decrypt message'
+                  displayContent = '🔒 Decryption failed'
                 }
                 
                 const newMessage = {
@@ -387,8 +390,8 @@ export default function MessagingApp({ user, onLogout }: MessagingAppProps) {
             }
           }
           
-          // Decrypt message content with null check
-          let decryptedContent = 'Message content unavailable'
+          // Decrypt message content - NEVER show encrypted blob to user
+          let decryptedContent = '🔒 Unable to decrypt message'
           if (msg.encrypted_blob) {
             try {
               // Check if it's properly encrypted JSON format
@@ -405,22 +408,26 @@ export default function MessagingApp({ user, onLogout }: MessagingAppProps) {
                     decryptedContent = cryptoManager.decryptMessage(msg.encrypted_blob, msg.signature, senderPublicKey)
                     console.log('Decryption successful for message:', msg.id)
                   } catch (decryptError) {
-                    console.warn('Post-quantum decryption failed, trying fallback:', decryptError)
-                    // Fallback: try to extract from simple format or show raw content
-                    decryptedContent = msg.encrypted_blob.replace('encrypted_', '') || 'Hello! This is a test message.'
+                    console.warn('Post-quantum decryption failed:', decryptError)
+                    // NEVER show encrypted content - show user-friendly error
+                    decryptedContent = '🔒 Decryption failed - please check your keys'
                   }
                 } else {
-                  // Malformed encrypted data - try fallback
-                  decryptedContent = msg.encrypted_blob.replace('encrypted_', '') || 'Message content'
+                  // Malformed encrypted data - show error
+                  decryptedContent = '🔒 Invalid message format'
                 }
               } else {
-                // Simple encrypted format - remove prefix
-                decryptedContent = msg.encrypted_blob.replace('encrypted_', '') || msg.encrypted_blob
+                // Simple encrypted format - remove prefix only if it looks like test data
+                if (msg.encrypted_blob.startsWith('encrypted_')) {
+                  decryptedContent = msg.encrypted_blob.replace('encrypted_', '')
+                } else {
+                  decryptedContent = '🔒 Unable to decrypt message'
+                }
               }
             } catch (decryptError) {
               console.warn('Message parsing failed:', decryptError)
-              // Final fallback - show simple content
-              decryptedContent = msg.encrypted_blob.replace('encrypted_', '') || 'Message content'
+              // NEVER show raw encrypted content to user
+              decryptedContent = '🔒 Message parsing failed'
             }
           }
           
@@ -902,23 +909,24 @@ export default function MessagingApp({ user, onLogout }: MessagingAppProps) {
                   try {
                     decryptedContent = cryptoManager.decryptMessage(msg.encrypted_blob, msg.signature, msg.sender_public_key)
                   } catch (decryptError) {
-                    console.warn('Decryption failed, using fallback:', decryptError)
-                    decryptedContent = msg.encrypted_blob.replace('encrypted_', '') || 'Message content'
+                    console.warn('Decryption failed:', decryptError)
+                    decryptedContent = '🔒 Decryption failed'
                   }
                 } else {
-                  decryptedContent = msg.encrypted_blob.replace('encrypted_', '') || 'Message content'
+                  decryptedContent = '🔒 Invalid message format'
                 }
               } catch {
-                decryptedContent = msg.encrypted_blob.replace('encrypted_', '') || 'Message content'
+                decryptedContent = '🔒 Message parsing failed'
               }
+            } else if (msg.encrypted_blob.startsWith('encrypted_')) {
+              // Simple test format - remove prefix
+              decryptedContent = msg.encrypted_blob.replace('encrypted_', '')
             } else {
-              // Simple format - just remove prefix
-              decryptedContent = msg.encrypted_blob.replace('encrypted_', '') || msg.encrypted_blob
+              decryptedContent = '🔒 Unknown encryption format'
             }
           } catch (error) {
             console.error('Decryption error:', error)
-            // Final fallback to show actual content
-            decryptedContent = msg.encrypted_blob.replace('encrypted_', '') || 'Message content'
+            decryptedContent = '🔒 Unable to decrypt message'
           }
           
           formattedMessages.push({
