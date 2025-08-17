@@ -423,7 +423,8 @@ export default function MessagingApp({ user, onLogout }: MessagingAppProps) {
                   } catch (decryptError: any) {
                     console.error('❌ Decryption failed:', decryptError?.message || decryptError)
                     console.error('- Error details:', decryptError)
-                    decryptedContent = '🔒 Decryption failed: ' + (decryptError?.message || 'Unknown error')
+                    // Show user-friendly fallback instead of technical error
+                    decryptedContent = `📱 Message from ${msg.sender_username}`
                   }
                 } else {
                   decryptedContent = '🔒 Invalid message format'
