@@ -158,28 +158,63 @@ export class CryptoManager {
 
   // Decrypt message
   decryptMessage(encryptedBlob: string, signature: string, senderMLDSAPublicKey: string): string {
+    console.log('🔍 CryptoManager.decryptMessage called');
+    console.log('- Has userKeys:', !!this.userKeys);
+    
     if (!this.userKeys) {
-      // Try to load keys from storage first
+      console.log('- Attempting to load keys from storage');
       const loadedKeys = this.loadKeysFromStorage();
+      console.log('- Loaded keys from storage:', !!loadedKeys);
       if (!loadedKeys) {
         throw new Error('No keys available for decryption - please login again');
       }
     }
 
     try {
+      console.log('- Starting decryption process');
+      console.log('- Encrypted blob length:', encryptedBlob.length);
+      console.log('- Signature:', signature.substring(0, 20) + '...');
+      console.log('- Sender public key:', senderMLDSAPublicKey.substring(0, 20) + '...');
+      
       // 1. Verify ML-DSA signature (skip if fallback key)
-      if (senderMLDSAPublicKey !== 'fallback_key' && !this.verifySignature(encryptedBlob, signature, senderMLDSAPublicKey)) {
-        console.warn('Message signature verification failed, proceeding anyway');
-        // Don't throw error, just warn - continue with decryption
+      if (senderMLDSAPublicKey !== 'fallback_key') {
+        console.log('- Verifying signature');
+        const sigValid = this.verifySignature(encryptedBlob, signature, senderMLDSAPublicKey);
+        console.log('- Signature valid:', sigValid);
+        if (!sigValid) {
+          console.warn('Message signature verification failed, proceeding anyway');
+        }
+      } else {
+        console.log('- Skipping signature verification (fallback key)');
       }
 
       // 2. Parse encrypted blob
-      const { encryptedMessage, encapsulatedKey, iv } = JSON.parse(encryptedBlob);
+      console.log('- Parsing encrypted blob');
+      const parsed = JSON.parse(encryptedBlob);
+      console.log('- Parsed keys:', Object.keys(parsed));
+      const { encryptedMessage, encapsulatedKey, iv } = parsed;
+      
+      if (!encryptedMessage || !encapsulatedKey || !iv) {
+        const missing = [];
+        if (!encryptedMessage) missing.push('encryptedMessage');
+        if (!encapsulatedKey) missing.push('encapsulatedKey');
+        if (!iv) missing.push('iv');
+        throw new Error('Missing required fields: ' + missing.join(', '));
+      }
+      
+      console.log('- encryptedMessage length:', encryptedMessage.length);
+      console.log('- encapsulatedKey length:', encapsulatedKey.length);
+      console.log('- iv length:', iv.length);
       
       // 3. Kyber KEM: Decapsulate AES key
+      console.log('- Decapsulating AES key with Kyber');
       const aesKey = this.kyberDecapsulate(encapsulatedKey, this.userKeys!.kyber.privateKey);
+      console.log('- AES key derived, length:', aesKey.length);
       
       // 4. Decrypt with AES-256-CBC
+      console.log('- Decrypting with AES-256-CBC');
+      console.log('- IV for decryption:', iv.substring(0, 20) + '...');
+      
       const decrypted = CryptoJS.AES.decrypt(encryptedMessage, aesKey, {
         iv: CryptoJS.enc.Hex.parse(iv),
         mode: CryptoJS.mode.CBC,
@@ -187,13 +222,18 @@ export class CryptoManager {
       });
 
       const decryptedMessage = decrypted.toString(CryptoJS.enc.Utf8);
+      console.log('- Decrypted message length:', decryptedMessage.length);
+      
       if (!decryptedMessage) {
-        throw new Error('Failed to decrypt message content');
+        throw new Error('AES decryption returned empty result - possible key mismatch');
       }
 
+      console.log('✅ Decryption successful');
       return decryptedMessage;
     } catch (error: any) {
-      console.error('Decryption error details:', error);
+      console.error('❌ Decryption failed:', error.message);
+      console.error('- Error type:', error.constructor.name);
+      console.error('- Full error:', error);
       throw new Error('Decryption failed: ' + (error?.message || 'Unknown error'));
     }
   }

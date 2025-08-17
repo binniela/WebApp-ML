@@ -401,14 +401,29 @@ export default function MessagingApp({ user, onLogout }: MessagingAppProps) {
                 if (encryptedData.encryptedMessage && encryptedData.algorithm) {
                   try {
                     const cryptoManager = CryptoManager.getInstance()
-                    console.log('Attempting post-quantum decryption for message from:', msg.sender_username)
+                    console.log('🔍 DECRYPTION DEBUG for message:', msg.id)
+                    console.log('- Encrypted blob:', msg.encrypted_blob.substring(0, 100) + '...')
+                    console.log('- Sender:', msg.sender_username)
+                    console.log('- Signature:', msg.signature)
+                    
+                    // Check if user has keys
+                    const userKeys = cryptoManager.getPublicKeys()
+                    console.log('- User has keys:', !!userKeys)
+                    if (!userKeys) {
+                      console.error('❌ No user keys available for decryption')
+                      decryptedContent = '🔒 No decryption keys - please login again'
+                      throw new Error('No user keys available')
+                    }
                     
                     const senderPublicKey = msg.sender_public_key || 'fallback_key'
+                    console.log('- Sender public key:', senderPublicKey.substring(0, 20) + '...')
+                    
                     decryptedContent = cryptoManager.decryptMessage(msg.encrypted_blob, msg.signature, senderPublicKey)
-                    console.log('Post-quantum decryption successful for message:', msg.id)
+                    console.log('✅ Decryption successful:', decryptedContent.substring(0, 20) + '...')
                   } catch (decryptError) {
-                    console.warn('Post-quantum decryption failed:', decryptError)
-                    decryptedContent = '🔒 Decryption failed - please check your keys'
+                    console.error('❌ Decryption failed:', decryptError.message)
+                    console.error('- Error details:', decryptError)
+                    decryptedContent = '🔒 Decryption failed: ' + decryptError.message
                   }
                 } else {
                   decryptedContent = '🔒 Invalid message format'
