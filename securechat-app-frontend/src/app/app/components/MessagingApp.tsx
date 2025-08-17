@@ -131,16 +131,16 @@ export default function MessagingApp({ user, onLogout }: MessagingAppProps) {
                 try {
                   const encryptedBlob = message.data.encrypted_blob || message.data.content
                   
-                  // Check simple format FIRST (most common)
-                  if (encryptedBlob && encryptedBlob.startsWith('encrypted_')) {
-                    displayContent = encryptedBlob.replace('encrypted_', '')
-                    console.log('Simple decryption successful for WebSocket message')
-                  } else if (encryptedBlob && encryptedBlob.startsWith('{')) {
-                    // Complex post-quantum encrypted message
+                  // Check real encrypted JSON format FIRST (new secure format)
+                  if (encryptedBlob && encryptedBlob.startsWith('{')) {
                     const cryptoManager = CryptoManager.getInstance()
                     const senderPublicKey = message.data.sender_public_key || 'fallback_key'
                     displayContent = cryptoManager.decryptMessage(encryptedBlob, message.data.signature, senderPublicKey)
                     console.log('Post-quantum decryption successful for WebSocket message')
+                  } else if (encryptedBlob && encryptedBlob.startsWith('encrypted_')) {
+                    // Legacy simple format (for backward compatibility)
+                    displayContent = encryptedBlob.replace('encrypted_', '')
+                    console.log('Legacy decryption for WebSocket message')
                   } else {
                     displayContent = '🔒 Unknown message format'
                   }
@@ -395,12 +395,8 @@ export default function MessagingApp({ user, onLogout }: MessagingAppProps) {
           let decryptedContent = '🔒 Unable to decrypt message'
           if (msg.encrypted_blob) {
             try {
-              // Check simple format FIRST (most common)
-              if (msg.encrypted_blob.startsWith('encrypted_')) {
-                decryptedContent = msg.encrypted_blob.replace('encrypted_', '')
-                console.log('Simple decryption successful for message:', msg.id)
-              } else if (msg.encrypted_blob.startsWith('{')) {
-                // Complex post-quantum encrypted format
+              // Check real encrypted JSON format FIRST (new secure format)
+              if (msg.encrypted_blob.startsWith('{')) {
                 const encryptedData = JSON.parse(msg.encrypted_blob)
                 if (encryptedData.encryptedMessage && encryptedData.algorithm) {
                   try {
@@ -417,6 +413,10 @@ export default function MessagingApp({ user, onLogout }: MessagingAppProps) {
                 } else {
                   decryptedContent = '🔒 Invalid message format'
                 }
+              } else if (msg.encrypted_blob.startsWith('encrypted_')) {
+                // Legacy simple format (for backward compatibility)
+                decryptedContent = msg.encrypted_blob.replace('encrypted_', '')
+                console.log('Legacy decryption for message:', msg.id)
               } else {
                 // Unknown format
                 decryptedContent = '🔒 Unknown encryption format'
@@ -734,20 +734,18 @@ export default function MessagingApp({ user, onLogout }: MessagingAppProps) {
       const token = localStorage.getItem('lockbox-token')
       const crypto = CryptoManager.getInstance()
       
-      // Use post-quantum encryption for server storage only
+      // Use real post-quantum encryption
       let encryptedBlob: string
       let signature: string
       
       try {
-        // Use real key exchange for encryption
         const encrypted = await crypto.encryptMessage(content, activeContact.id)
         encryptedBlob = encrypted.encryptedBlob
         signature = encrypted.signature
-        console.log('Message encrypted with post-quantum crypto')
+        console.log('Message encrypted with post-quantum crypto:', encryptedBlob.substring(0, 100) + '...')
       } catch (cryptoError) {
-        console.warn('Post-quantum encryption failed, using fallback:', cryptoError)
-        encryptedBlob = `encrypted_${content}`
-        signature = `signature_${messageId}`
+        console.error('Encryption failed:', cryptoError)
+        throw new Error('Failed to encrypt message')
       }
       
       const response = await fetch('/api/proxy', {
@@ -897,12 +895,8 @@ export default function MessagingApp({ user, onLogout }: MessagingAppProps) {
           let decryptedContent = msg.encrypted_blob
           
           try {
-            // Check simple format FIRST (most common)
-            if (msg.encrypted_blob.startsWith('encrypted_')) {
-              decryptedContent = msg.encrypted_blob.replace('encrypted_', '')
-              console.log('Simple decryption successful for contact message:', msg.id)
-            } else if (msg.encrypted_blob.startsWith('{')) {
-              // Complex post-quantum encrypted format
+            // Check real encrypted JSON format FIRST (new secure format)
+            if (msg.encrypted_blob.startsWith('{')) {
               try {
                 const encryptedData = JSON.parse(msg.encrypted_blob)
                 if (encryptedData.encryptedMessage && encryptedData.algorithm) {
@@ -919,6 +913,10 @@ export default function MessagingApp({ user, onLogout }: MessagingAppProps) {
               } catch {
                 decryptedContent = '🔒 Message parsing failed'
               }
+            } else if (msg.encrypted_blob.startsWith('encrypted_')) {
+              // Legacy simple format (for backward compatibility)
+              decryptedContent = msg.encrypted_blob.replace('encrypted_', '')
+              console.log('Legacy decryption for contact message:', msg.id)
             } else {
               decryptedContent = '🔒 Unknown encryption format'
             }
