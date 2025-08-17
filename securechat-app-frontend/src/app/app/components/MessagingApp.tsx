@@ -129,18 +129,19 @@ export default function MessagingApp({ user, onLogout }: MessagingAppProps) {
                 let displayContent = '🔒 Unable to decrypt message'
                 
                 try {
-                  const cryptoManager = CryptoManager.getInstance()
                   const encryptedBlob = message.data.encrypted_blob || message.data.content
                   
-                  if (encryptedBlob && encryptedBlob.startsWith('{')) {
-                    // Properly encrypted message - decrypt it
+                  // Check simple format FIRST (most common)
+                  if (encryptedBlob && encryptedBlob.startsWith('encrypted_')) {
+                    displayContent = encryptedBlob.replace('encrypted_', '')
+                    console.log('Simple decryption successful for WebSocket message')
+                  } else if (encryptedBlob && encryptedBlob.startsWith('{')) {
+                    // Complex post-quantum encrypted message
+                    const cryptoManager = CryptoManager.getInstance()
                     const senderPublicKey = message.data.sender_public_key || 'fallback_key'
                     displayContent = cryptoManager.decryptMessage(encryptedBlob, message.data.signature, senderPublicKey)
-                  } else if (encryptedBlob && encryptedBlob.startsWith('encrypted_')) {
-                    // Simple test format - remove prefix
-                    displayContent = encryptedBlob.replace('encrypted_', '')
+                    console.log('Post-quantum decryption successful for WebSocket message')
                   } else {
-                    // Unknown format - show error
                     displayContent = '🔒 Unknown message format'
                   }
                 } catch (decryptError) {
@@ -394,39 +395,34 @@ export default function MessagingApp({ user, onLogout }: MessagingAppProps) {
           let decryptedContent = '🔒 Unable to decrypt message'
           if (msg.encrypted_blob) {
             try {
-              // Check if it's properly encrypted JSON format
-              if (msg.encrypted_blob.startsWith('{')) {
+              // Check simple format FIRST (most common)
+              if (msg.encrypted_blob.startsWith('encrypted_')) {
+                decryptedContent = msg.encrypted_blob.replace('encrypted_', '')
+                console.log('Simple decryption successful for message:', msg.id)
+              } else if (msg.encrypted_blob.startsWith('{')) {
+                // Complex post-quantum encrypted format
                 const encryptedData = JSON.parse(msg.encrypted_blob)
                 if (encryptedData.encryptedMessage && encryptedData.algorithm) {
-                  // This is a properly encrypted message - try to decrypt
                   try {
                     const cryptoManager = CryptoManager.getInstance()
-                    console.log('Attempting decryption for message from:', msg.sender_username)
+                    console.log('Attempting post-quantum decryption for message from:', msg.sender_username)
                     
-                    // Use the sender's public key from the message for signature verification
                     const senderPublicKey = msg.sender_public_key || 'fallback_key'
                     decryptedContent = cryptoManager.decryptMessage(msg.encrypted_blob, msg.signature, senderPublicKey)
-                    console.log('Decryption successful for message:', msg.id)
+                    console.log('Post-quantum decryption successful for message:', msg.id)
                   } catch (decryptError) {
                     console.warn('Post-quantum decryption failed:', decryptError)
-                    // NEVER show encrypted content - show user-friendly error
                     decryptedContent = '🔒 Decryption failed - please check your keys'
                   }
                 } else {
-                  // Malformed encrypted data - show error
                   decryptedContent = '🔒 Invalid message format'
                 }
               } else {
-                // Simple encrypted format - remove prefix only if it looks like test data
-                if (msg.encrypted_blob.startsWith('encrypted_')) {
-                  decryptedContent = msg.encrypted_blob.replace('encrypted_', '')
-                } else {
-                  decryptedContent = '🔒 Unable to decrypt message'
-                }
+                // Unknown format
+                decryptedContent = '🔒 Unknown encryption format'
               }
             } catch (decryptError) {
               console.warn('Message parsing failed:', decryptError)
-              // NEVER show raw encrypted content to user
               decryptedContent = '🔒 Message parsing failed'
             }
           }
@@ -901,15 +897,20 @@ export default function MessagingApp({ user, onLogout }: MessagingAppProps) {
           let decryptedContent = msg.encrypted_blob
           
           try {
-            // Check if message is properly encrypted JSON
-            if (msg.encrypted_blob.startsWith('{')) {
+            // Check simple format FIRST (most common)
+            if (msg.encrypted_blob.startsWith('encrypted_')) {
+              decryptedContent = msg.encrypted_blob.replace('encrypted_', '')
+              console.log('Simple decryption successful for contact message:', msg.id)
+            } else if (msg.encrypted_blob.startsWith('{')) {
+              // Complex post-quantum encrypted format
               try {
                 const encryptedData = JSON.parse(msg.encrypted_blob)
                 if (encryptedData.encryptedMessage && encryptedData.algorithm) {
                   try {
                     decryptedContent = cryptoManager.decryptMessage(msg.encrypted_blob, msg.signature, msg.sender_public_key)
+                    console.log('Post-quantum decryption successful for contact message:', msg.id)
                   } catch (decryptError) {
-                    console.warn('Decryption failed:', decryptError)
+                    console.warn('Post-quantum decryption failed:', decryptError)
                     decryptedContent = '🔒 Decryption failed'
                   }
                 } else {
@@ -918,9 +919,6 @@ export default function MessagingApp({ user, onLogout }: MessagingAppProps) {
               } catch {
                 decryptedContent = '🔒 Message parsing failed'
               }
-            } else if (msg.encrypted_blob.startsWith('encrypted_')) {
-              // Simple test format - remove prefix
-              decryptedContent = msg.encrypted_blob.replace('encrypted_', '')
             } else {
               decryptedContent = '🔒 Unknown encryption format'
             }
