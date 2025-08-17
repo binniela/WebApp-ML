@@ -110,26 +110,25 @@ export class CryptoManager {
     }
 
     try {
-      // 1. Create shared secret for encryption/decryption
-      const recipientKeys = await this.getRecipientPublicKeys(recipientUserId);
-      const sharedSecret = CryptoJS.SHA256(this.userKeys.kyber.privateKey + recipientKeys.kyber_public_key + 'shared').toString().substring(0, 64);
+      // 1. Use recipient ID for consistent key derivation
+      const derivedKey = CryptoJS.SHA256(recipientUserId + 'lockbox_key').toString().substring(0, 64);
       
-      // 2. Use shared secret directly as password for simple encryption
+      // 2. Encrypt with AES using derived key
       const iv = CryptoJS.lib.WordArray.random(16);
-      const encrypted = CryptoJS.AES.encrypt(message, sharedSecret, {
+      const encrypted = CryptoJS.AES.encrypt(message, derivedKey, {
         iv: iv,
         mode: CryptoJS.mode.CBC,
         padding: CryptoJS.pad.Pkcs7
       });
       
-      const encapsulatedKey = this.userKeys.kyber.publicKey; // Store sender's public key for recipient
+      const encapsulatedKey = recipientUserId; // Store recipient ID for key derivation
       
       // 3. Create encrypted blob
       const encryptedBlob = JSON.stringify({
         encryptedMessage: encrypted.toString(),
         encapsulatedKey: encapsulatedKey,
         iv: iv.toString(),
-        algorithm: 'Kyber-1024 + AES-256-GCM'
+        algorithm: 'AES-256-CBC'
       });
 
       // 5. Sign with ML-DSA
@@ -205,17 +204,17 @@ export class CryptoManager {
       console.log('- encapsulatedKey length:', encapsulatedKey.length);
       console.log('- iv length:', iv.length);
       
-      // 3. Derive shared secret from sender's public key + recipient's private key
-      console.log('- Deriving shared secret for decryption');
-      const senderPublicKey = encapsulatedKey; // Sender's public key stored in encapsulatedKey
-      const sharedSecret = CryptoJS.SHA256(this.userKeys!.kyber.privateKey + senderPublicKey + 'shared').toString().substring(0, 64);
-      console.log('- Shared secret derived, length:', sharedSecret.length);
+      // 3. Use current user's ID for key derivation (matching encryption)
+      console.log('- Deriving key for decryption');
+      const currentUserId = localStorage.getItem('lockbox-user-id') || 'default';
+      const derivedKey = CryptoJS.SHA256(currentUserId + 'lockbox_key').toString().substring(0, 64);
+      console.log('- Key derived for user:', currentUserId, 'length:', derivedKey.length);
       
-      // 4. Decrypt with AES-256-CBC using shared secret as password
+      // 4. Decrypt with AES-256-CBC using derived key
       console.log('- Decrypting with AES-256-CBC');
       console.log('- IV for decryption:', iv.substring(0, 20) + '...');
       
-      const decrypted = CryptoJS.AES.decrypt(encryptedMessage, sharedSecret, {
+      const decrypted = CryptoJS.AES.decrypt(encryptedMessage, derivedKey, {
         iv: CryptoJS.enc.Hex.parse(iv),
         mode: CryptoJS.mode.CBC,
         padding: CryptoJS.pad.Pkcs7
