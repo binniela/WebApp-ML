@@ -110,26 +110,13 @@ export class CryptoManager {
     }
 
     try {
-      // 1. Generate random AES-256 key
-      const aesKey = CryptoJS.lib.WordArray.random(32); // 256 bits
-      
-      // 2. Encrypt message with AES-256-CBC
-      const iv = CryptoJS.lib.WordArray.random(16); // 128-bit IV for CBC
-      const encrypted = CryptoJS.AES.encrypt(message, aesKey, {
-        iv: iv,
-        mode: CryptoJS.mode.CBC,
-        padding: CryptoJS.pad.Pkcs7
-      });
-      
-      // 3. Create shared secret for encryption/decryption
+      // 1. Create shared secret for encryption/decryption
       const recipientKeys = await this.getRecipientPublicKeys(recipientUserId);
-      // Use sender's private key + recipient's public key to create shared secret
       const sharedSecret = CryptoJS.SHA256(this.userKeys.kyber.privateKey + recipientKeys.kyber_public_key + 'shared').toString().substring(0, 64);
-      // Use shared secret as AES key
-      const sharedAesKey = CryptoJS.enc.Hex.parse(sharedSecret);
       
-      // Encrypt with shared key instead of random key
-      const sharedEncrypted = CryptoJS.AES.encrypt(message, sharedAesKey, {
+      // 2. Use shared secret directly as password for simple encryption
+      const iv = CryptoJS.lib.WordArray.random(16);
+      const encrypted = CryptoJS.AES.encrypt(message, sharedSecret, {
         iv: iv,
         mode: CryptoJS.mode.CBC,
         padding: CryptoJS.pad.Pkcs7
@@ -137,9 +124,9 @@ export class CryptoManager {
       
       const encapsulatedKey = this.userKeys.kyber.publicKey; // Store sender's public key for recipient
       
-      // 4. Create encrypted blob
+      // 3. Create encrypted blob
       const encryptedBlob = JSON.stringify({
-        encryptedMessage: sharedEncrypted.toString(),
+        encryptedMessage: encrypted.toString(),
         encapsulatedKey: encapsulatedKey,
         iv: iv.toString(),
         algorithm: 'Kyber-1024 + AES-256-GCM'
@@ -222,14 +209,13 @@ export class CryptoManager {
       console.log('- Deriving shared secret for decryption');
       const senderPublicKey = encapsulatedKey; // Sender's public key stored in encapsulatedKey
       const sharedSecret = CryptoJS.SHA256(this.userKeys!.kyber.privateKey + senderPublicKey + 'shared').toString().substring(0, 64);
-      const aesKey = CryptoJS.enc.Hex.parse(sharedSecret);
       console.log('- Shared secret derived, length:', sharedSecret.length);
       
-      // 4. Decrypt with AES-256-CBC
+      // 4. Decrypt with AES-256-CBC using shared secret as password
       console.log('- Decrypting with AES-256-CBC');
       console.log('- IV for decryption:', iv.substring(0, 20) + '...');
       
-      const decrypted = CryptoJS.AES.decrypt(encryptedMessage, aesKey, {
+      const decrypted = CryptoJS.AES.decrypt(encryptedMessage, sharedSecret, {
         iv: CryptoJS.enc.Hex.parse(iv),
         mode: CryptoJS.mode.CBC,
         padding: CryptoJS.pad.Pkcs7
