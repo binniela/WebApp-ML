@@ -420,10 +420,10 @@ export default function MessagingApp({ user, onLogout }: MessagingAppProps) {
                     
                     decryptedContent = cryptoManager.decryptMessage(msg.encrypted_blob, msg.signature, senderPublicKey)
                     console.log('✅ Decryption successful:', decryptedContent.substring(0, 20) + '...')
-                  } catch (decryptError) {
-                    console.error('❌ Decryption failed:', decryptError.message)
+                  } catch (decryptError: any) {
+                    console.error('❌ Decryption failed:', decryptError?.message || decryptError)
                     console.error('- Error details:', decryptError)
-                    decryptedContent = '🔒 Decryption failed: ' + decryptError.message
+                    decryptedContent = '🔒 Decryption failed: ' + (decryptError?.message || 'Unknown error')
                   }
                 } else {
                   decryptedContent = '🔒 Invalid message format'
