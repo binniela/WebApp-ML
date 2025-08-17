@@ -204,11 +204,11 @@ export class CryptoManager {
       console.log('- encapsulatedKey length:', encapsulatedKey.length);
       console.log('- iv length:', iv.length);
       
-      // 3. Use current user's ID for key derivation (matching encryption)
+      // 3. Use encapsulatedKey (recipient ID) for key derivation (matching encryption)
       console.log('- Deriving key for decryption');
-      const currentUserId = localStorage.getItem('lockbox-user-id') || 'default';
-      const derivedKey = CryptoJS.SHA256(currentUserId + 'lockbox_key').toString().substring(0, 64);
-      console.log('- Key derived for user:', currentUserId, 'length:', derivedKey.length);
+      const recipientId = encapsulatedKey; // This is the recipient ID stored during encryption
+      const derivedKey = CryptoJS.SHA256(recipientId + 'lockbox_key').toString().substring(0, 64);
+      console.log('- Key derived for recipient:', recipientId, 'length:', derivedKey.length);
       
       // 4. Decrypt with AES-256-CBC using derived key
       console.log('- Decrypting with AES-256-CBC');
