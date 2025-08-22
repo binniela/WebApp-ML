@@ -9,7 +9,7 @@
     "lint": "next lint"
   },
   "dependencies": {
-    "@noble/curves": "^1.9.2",
+    "@noble/curves": "^1.9.6",
     "@noble/hashes": "^1.8.0",
     "@radix-ui/react-slot": "^1.2.3",
     "@radix-ui/react-switch": "^1.2.5",
