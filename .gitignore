@@ -1,13 +1,29 @@
-# Environment variables and secrets
+# Dependencies
+node_modules/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+.venv/
+pip-log.txt
+pip-delete-this-directory.txt
+
+# Build outputs
+.next/
+out/
+build/
+dist/
+*.tsbuildinfo
+
+# Environment variables
 .env
 .env.local
-.env.production
-.env.staging
-*.key
-*.pem
-*.p12
-config.json
-secrets.json
+.env.development.local
+.env.test.local
+.env.production.local
 
 # Database
 *.db
@@ -15,20 +31,79 @@ secrets.json
 *.sqlite3
 
 # Logs
+logs
 *.log
-logs/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+lerna-debug.log*
 
-# Test files with sensitive data
-test_*.py
-qa_*.py
-security_audit.py
-*_test.py
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
 
-# Temporary files
-*.tmp
-*.temp
-temp/
+# Coverage directory used by tools like istanbul
+coverage/
+*.lcov
+
+# nyc test coverage
+.nyc_output
+
+# Dependency directories
+jspm_packages/
+
+# Optional npm cache directory
+.npm
+
+# Optional eslint cache
+.eslintcache
+
+# Microbundle cache
+.rpt2_cache/
+.rts2_cache_cjs/
+.rts2_cache_es/
+.rts2_cache_umd/
+
+# Optional REPL history
+.node_repl_history
+
+# Output of 'npm pack'
+*.tgz
+
+# Yarn Integrity file
+.yarn-integrity
+
+# parcel-bundler cache (https://parceljs.org/)
+.cache
+.parcel-cache
+
+# Next.js build output
+.next
+
+# Nuxt.js build / generate output
+.nuxt
+dist
+
+# Gatsby files
+.cache/
+public
+
+# Storybook build outputs
+.out
+.storybook-out
+
+# Temporary folders
 tmp/
+temp/
+
+# Editor directories and files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
 
 # OS generated files
 .DS_Store
@@ -39,52 +114,25 @@ tmp/
 ehthumbs.db
 Thumbs.db
 
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
+# Test files
+test_*.js
+debug_*.js
+*_test.js
+*.test.js
+comprehensive_test.*
+final_test.*
+security_analysis.*
 
-# Python
-__pycache__/
-*.py[cod]
-*$py.class
-*.so
-.Python
-build/
-develop-eggs/
-dist/
-downloads/
-eggs/
-.eggs/
-# Python lib directories only
-**/lib/python*
-**/lib64/
-lib64/
-parts/
-sdist/
-var/
-wheels/
-*.egg-info/
-.installed.cfg
-*.egg
-venv/
-env/
-ENV/
+# Documentation drafts
+*_SUMMARY.md
+*_STATUS.md
+DEPLOYMENT_*.md
+FINAL_*.md
 
-# Node.js
-node_modules/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
-.npm
-.yarn-integrity
+# Backup files
+*.backup
+*_backup_*
+sync_*.sh
 
-# Next.js
-.next/
-out/
-
-# Production build
-/build
-/dist
+# WebSocket test files
+test_websocket.html
