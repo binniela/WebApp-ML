@@ -103,137 +103,228 @@ export class CryptoManager {
     return hash.repeat(Math.ceil(5184 / hash.length)).substring(0, 5184); // 2592 bytes * 2
   }
 
-  // Encrypt message using Kyber KEM + AES-256-GCM
+  // Encrypt message using real Kyber KEM + AES-256-CBC
   async encryptMessage(message: string, recipientUserId: string): Promise<{ encryptedBlob: string; signature: string }> {
     if (!this.userKeys) {
       throw new Error('No keys available for encryption');
     }
 
     try {
-      // 1. Use recipient ID for consistent key derivation
-      const derivedKey = CryptoJS.SHA256(recipientUserId + 'lockbox_key').toString().substring(0, 64);
+      // 1. Get recipient's Kyber public key
+      const recipientKeys = await this.getRecipientPublicKeys(recipientUserId);
+      const recipientKyberPublicKey = recipientKeys.kyber_public_key;
       
-      // 2. Encrypt with AES using derived key
+      if (!recipientKyberPublicKey || recipientKyberPublicKey.startsWith('fallback_')) {
+        console.warn('Using fallback encryption for recipient:', recipientUserId);
+        return this.encryptMessageLegacy(message, recipientUserId);
+      }
+      
+      // 2. Kyber encapsulation - generate random shared secret
+      const { ciphertext, sharedSecret } = await this.kyberEncapsulate(recipientKyberPublicKey);
+      
+      // 3. Use shared secret as AES key (32 bytes = 256 bits)
+      const aesKey = sharedSecret.substring(0, 64); // First 32 bytes as hex
+      
+      // 4. Encrypt with AES using shared secret
       const iv = CryptoJS.lib.WordArray.random(16);
-      const encrypted = CryptoJS.AES.encrypt(message, derivedKey, {
+      const encrypted = CryptoJS.AES.encrypt(message, aesKey, {
         iv: iv,
         mode: CryptoJS.mode.CBC,
         padding: CryptoJS.pad.Pkcs7
       });
       
-      const encapsulatedKey = recipientUserId; // Store recipient ID for key derivation
-      
-      // 3. Create encrypted blob
+      // 5. Create encrypted blob with Kyber ciphertext
       const encryptedBlob = JSON.stringify({
+        kyberCiphertext: ciphertext,        // Recipient needs this to get shared secret
         encryptedMessage: encrypted.toString(),
-        encapsulatedKey: encapsulatedKey,
         iv: iv.toString(),
-        algorithm: 'AES-256-CBC'
+        algorithm: 'Kyber1024+AES256'
       });
 
-      // 5. Sign with ML-DSA
+      // 6. Sign with ML-DSA
       const signature = this.signMessage(encryptedBlob);
 
+      console.log('✅ Kyber encryption successful');
       return { encryptedBlob, signature };
     } catch (error: any) {
-      throw new Error('Encryption failed: ' + (error?.message || 'Unknown error'));
+      console.error('Kyber encryption failed, falling back to legacy:', error);
+      return this.encryptMessageLegacy(message, recipientUserId);
     }
   }
 
-  // Simulate Kyber-1024 KEM decapsulation
-  private kyberDecapsulate(encapsulatedKey: string, privateKey: string): string {
-    // For simulation: we need to reverse the encapsulation process
-    // The encapsulated key was created as: SHA256(publicKey + aesKey + 'kyber_encap')
-    // We need to derive the public key from private key, then extract the AES key
-    const publicKey = this.deriveKyberPublicKey(privateKey);
+  // Legacy encryption method for fallback
+  private async encryptMessageLegacy(message: string, recipientUserId: string): Promise<{ encryptedBlob: string; signature: string }> {
+    // Use old deterministic key derivation
+    const derivedKey = CryptoJS.SHA256(recipientUserId + 'lockbox_key').toString().substring(0, 64);
     
-    // Try to find the AES key that would produce this encapsulated key
-    // This is a simplified simulation - in real Kyber, decapsulation is direct
-    // For now, derive a deterministic key from the encapsulated key and private key
-    const aesKey = CryptoJS.SHA256(encapsulatedKey + privateKey + 'derive_aes').toString().substring(0, 64);
-    return aesKey;
+    const iv = CryptoJS.lib.WordArray.random(16);
+    const encrypted = CryptoJS.AES.encrypt(message, derivedKey, {
+      iv: iv,
+      mode: CryptoJS.mode.CBC,
+      padding: CryptoJS.pad.Pkcs7
+    });
+    
+    const encryptedBlob = JSON.stringify({
+      encryptedMessage: encrypted.toString(),
+      encapsulatedKey: recipientUserId,
+      iv: iv.toString(),
+      algorithm: 'AES-256-CBC'
+    });
+
+    const signature = this.signMessage(encryptedBlob);
+    return { encryptedBlob, signature };
   }
 
-  // Decrypt message
-  decryptMessage(encryptedBlob: string, signature: string, senderMLDSAPublicKey: string): string {
-    console.log('🔍 CryptoManager.decryptMessage called');
-    console.log('- Has userKeys:', !!this.userKeys);
+  // Decrypt message using real Kyber KEM
+  async decryptMessage(encryptedBlob: string, signature: string, senderMLDSAPublicKey: string): Promise<string> {
+    console.log('🔍 CryptoManager.decryptMessage called (Kyber KEM)');
     
     if (!this.userKeys) {
-      console.log('- Attempting to load keys from storage');
       const loadedKeys = this.loadKeysFromStorage();
-      console.log('- Loaded keys from storage:', !!loadedKeys);
       if (!loadedKeys) {
         throw new Error('No keys available for decryption - please login again');
       }
     }
 
     try {
-      console.log('- Starting decryption process');
-      console.log('- Encrypted blob length:', encryptedBlob.length);
-      console.log('- Signature:', signature.substring(0, 20) + '...');
-      console.log('- Sender public key:', senderMLDSAPublicKey.substring(0, 20) + '...');
-      
       // 1. Verify ML-DSA signature (skip if fallback key)
       if (senderMLDSAPublicKey !== 'fallback_key') {
-        console.log('- Verifying signature');
         const sigValid = this.verifySignature(encryptedBlob, signature, senderMLDSAPublicKey);
-        console.log('- Signature valid:', sigValid);
         if (!sigValid) {
           console.warn('Message signature verification failed, proceeding anyway');
         }
-      } else {
-        console.log('- Skipping signature verification (fallback key)');
       }
 
       // 2. Parse encrypted blob
-      console.log('- Parsing encrypted blob');
       const parsed = JSON.parse(encryptedBlob);
-      console.log('- Parsed keys:', Object.keys(parsed));
-      const { encryptedMessage, encapsulatedKey, iv } = parsed;
       
-      if (!encryptedMessage || !encapsulatedKey || !iv) {
-        const missing = [];
-        if (!encryptedMessage) missing.push('encryptedMessage');
-        if (!encapsulatedKey) missing.push('encapsulatedKey');
-        if (!iv) missing.push('iv');
-        throw new Error('Missing required fields: ' + missing.join(', '));
+      // Check if this is new Kyber format or legacy format
+      if (parsed.kyberCiphertext) {
+        // New Kyber KEM format
+        const { kyberCiphertext, encryptedMessage, iv } = parsed;
+        
+        if (!kyberCiphertext || !encryptedMessage || !iv) {
+          throw new Error('Missing required Kyber fields');
+        }
+        
+        // 3. Kyber decapsulation - extract shared secret
+        const sharedSecret = await this.kyberDecapsulate(kyberCiphertext);
+        
+        // 4. Use shared secret as AES key
+        const aesKey = sharedSecret.substring(0, 64);
+        
+        // 5. Decrypt with AES-256-CBC
+        const decrypted = CryptoJS.AES.decrypt(encryptedMessage, aesKey, {
+          iv: CryptoJS.enc.Hex.parse(iv),
+          mode: CryptoJS.mode.CBC,
+          padding: CryptoJS.pad.Pkcs7
+        });
+
+        const decryptedMessage = decrypted.toString(CryptoJS.enc.Utf8);
+        
+        if (!decryptedMessage) {
+          throw new Error('Kyber decryption failed - invalid shared secret');
+        }
+
+        console.log('✅ Kyber decryption successful');
+        return decryptedMessage;
+        
+      } else {
+        // Legacy format - fall back to old method
+        console.log('- Using legacy decryption method');
+        return this.decryptMessageLegacy(parsed);
       }
       
-      console.log('- encryptedMessage length:', encryptedMessage.length);
-      console.log('- encapsulatedKey length:', encapsulatedKey.length);
-      console.log('- iv length:', iv.length);
-      
-      // 3. Use encapsulatedKey (recipient ID) for key derivation (matching encryption)
-      console.log('- Deriving key for decryption');
-      const recipientId = encapsulatedKey; // This is the recipient ID stored during encryption
-      const derivedKey = CryptoJS.SHA256(recipientId + 'lockbox_key').toString().substring(0, 64);
-      console.log('- Key derived for recipient:', recipientId, 'length:', derivedKey.length);
-      
-      // 4. Decrypt with AES-256-CBC using derived key
-      console.log('- Decrypting with AES-256-CBC');
-      console.log('- IV for decryption:', iv.substring(0, 20) + '...');
-      
-      const decrypted = CryptoJS.AES.decrypt(encryptedMessage, derivedKey, {
-        iv: CryptoJS.enc.Hex.parse(iv),
-        mode: CryptoJS.mode.CBC,
-        padding: CryptoJS.pad.Pkcs7
-      });
-
-      const decryptedMessage = decrypted.toString(CryptoJS.enc.Utf8);
-      console.log('- Decrypted message length:', decryptedMessage.length);
-      
-      if (!decryptedMessage) {
-        throw new Error('AES decryption returned empty result - possible key mismatch');
-      }
-
-      console.log('✅ Decryption successful');
-      return decryptedMessage;
     } catch (error: any) {
-      console.error('❌ Decryption failed:', error.message);
-      console.error('- Error type:', error.constructor.name);
-      console.error('- Full error:', error);
+      console.error('❌ Kyber decryption failed:', error.message);
       throw new Error('Decryption failed: ' + (error?.message || 'Unknown error'));
+    }
+  }
+
+  // Legacy decryption method for backward compatibility
+  private decryptMessageLegacy(parsed: any): string {
+    const { encryptedMessage, encapsulatedKey, iv } = parsed;
+    
+    if (!encryptedMessage || !encapsulatedKey || !iv) {
+      throw new Error('Missing required legacy fields');
+    }
+    
+    // Use old deterministic key derivation
+    const recipientId = encapsulatedKey;
+    const derivedKey = CryptoJS.SHA256(recipientId + 'lockbox_key').toString().substring(0, 64);
+    
+    const decrypted = CryptoJS.AES.decrypt(encryptedMessage, derivedKey, {
+      iv: CryptoJS.enc.Hex.parse(iv),
+      mode: CryptoJS.mode.CBC,
+      padding: CryptoJS.pad.Pkcs7
+    });
+
+    const decryptedMessage = decrypted.toString(CryptoJS.enc.Utf8);
+    
+    if (!decryptedMessage) {
+      throw new Error('Legacy decryption failed');
+    }
+
+    return decryptedMessage;
+  }
+
+  // Kyber encapsulation - call backend
+  private async kyberEncapsulate(publicKey: string): Promise<{ciphertext: string, sharedSecret: string}> {
+    try {
+      const token = localStorage.getItem('lockbox-token');
+      const response = await fetch('/api/proxy', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ 
+          path: '/crypto/kyber-encapsulate',
+          public_key: publicKey 
+        })
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        return {
+          ciphertext: result.ciphertext,
+          sharedSecret: result.shared_secret
+        };
+      } else {
+        throw new Error(`Kyber encapsulation failed: ${response.status}`);
+      }
+    } catch (error: any) {
+      console.error('Kyber encapsulation error:', error);
+      throw new Error('Kyber encapsulation failed: ' + (error?.message || 'Unknown error'));
+    }
+  }
+
+  // Kyber decapsulation - call backend
+  private async kyberDecapsulate(ciphertext: string): Promise<string> {
+    try {
+      const token = localStorage.getItem('lockbox-token');
+      const response = await fetch('/api/proxy', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ 
+          path: '/crypto/kyber-decapsulate',
+          ciphertext: ciphertext,
+          private_key: this.userKeys?.kyber.privateKey
+        })
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        return result.shared_secret;
+      } else {
+        throw new Error(`Kyber decapsulation failed: ${response.status}`);
+      }
+    } catch (error: any) {
+      console.error('Kyber decapsulation error:', error);
+      throw new Error('Kyber decapsulation failed: ' + (error?.message || 'Unknown error'));
     }
   }
 

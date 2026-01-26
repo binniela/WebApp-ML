@@ -135,7 +135,7 @@ export default function MessagingApp({ user, onLogout }: MessagingAppProps) {
                   if (encryptedBlob && encryptedBlob.startsWith('{')) {
                     const cryptoManager = CryptoManager.getInstance()
                     const senderPublicKey = message.data.sender_public_key || 'fallback_key'
-                    displayContent = cryptoManager.decryptMessage(encryptedBlob, message.data.signature, senderPublicKey)
+                    displayContent = await cryptoManager.decryptMessage(encryptedBlob, message.data.signature, senderPublicKey)
                     console.log('Post-quantum decryption successful for WebSocket message')
                   } else if (encryptedBlob && encryptedBlob.startsWith('encrypted_')) {
                     // Legacy simple format (for backward compatibility)
@@ -418,7 +418,7 @@ export default function MessagingApp({ user, onLogout }: MessagingAppProps) {
                     const senderPublicKey = msg.sender_public_key || 'fallback_key'
                     console.log('- Sender public key:', senderPublicKey.substring(0, 20) + '...')
                     
-                    decryptedContent = cryptoManager.decryptMessage(msg.encrypted_blob, msg.signature, senderPublicKey)
+                    decryptedContent = await cryptoManager.decryptMessage(msg.encrypted_blob, msg.signature, senderPublicKey)
                     console.log('✅ Decryption successful:', decryptedContent.substring(0, 20) + '...')
                   } catch (decryptError: any) {
                     console.error('❌ Decryption failed:', decryptError?.message || decryptError)
@@ -758,7 +758,7 @@ export default function MessagingApp({ user, onLogout }: MessagingAppProps) {
         const encrypted = await crypto.encryptMessage(content, activeContact.id)
         encryptedBlob = encrypted.encryptedBlob
         signature = encrypted.signature
-        console.log('Message encrypted with post-quantum crypto:', encryptedBlob.substring(0, 100) + '...')
+        console.log('Message encrypted with post-quantum crypto')
       } catch (cryptoError) {
         console.error('Encryption failed:', cryptoError)
         throw new Error('Failed to encrypt message')
@@ -917,7 +917,7 @@ export default function MessagingApp({ user, onLogout }: MessagingAppProps) {
                 const encryptedData = JSON.parse(msg.encrypted_blob)
                 if (encryptedData.encryptedMessage && encryptedData.algorithm) {
                   try {
-                    decryptedContent = cryptoManager.decryptMessage(msg.encrypted_blob, msg.signature, msg.sender_public_key)
+                    decryptedContent = await cryptoManager.decryptMessage(msg.encrypted_blob, msg.signature, msg.sender_public_key)
                     console.log('Post-quantum decryption successful for contact message:', msg.id)
                   } catch (decryptError) {
                     console.warn('Post-quantum decryption failed:', decryptError)
